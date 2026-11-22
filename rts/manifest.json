@@ -1,0 +1,45 @@
+{
+  "manifest_version": 3,
+  "name": "RTS",
+  "version": "1.5.3",
+  "description": "RTS \u2013 highlights report issues (missing URLs, metadata, bad file names, double spaces) on Social Media Report Builder.",
+  "permissions": [
+    "storage"
+  ],
+  "host_permissions": [
+    "https://next.socialmediareportbuilder.com/*"
+  ],
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://next.socialmediareportbuilder.com/*"
+      ],
+      "js": [
+        "modes/default.js",
+        "modes/bulk_no_rh.js",
+        "modes/bulk_rh.js",
+        "modes/standard.js",
+        "content.js"
+      ],
+      "css": [
+        "content.css"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_title": "RTS",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png"
+    }
+  }
+}

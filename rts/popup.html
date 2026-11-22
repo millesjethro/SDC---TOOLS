@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>RTS</title><link rel="stylesheet" href="popup.css"></head>
+<body>
+  <header>
+    <img src="icons/icon48.png" alt="">
+    <div><h1>RTS</h1><span id="ver"></span></div>
+    <label class="sw big"><input type="checkbox" id="enabled" aria-label="Enable RTS"><i></i></label>
+  </header>
+
+  <main>
+    <div class="tabs" role="tablist" aria-label="RTS">
+      <button id="report-tab" type="button" role="tab" aria-selected="true" aria-controls="report-panel">Report</button>
+      <button id="rules-tab" type="button" role="tab" aria-selected="false" aria-controls="rules-panel" tabindex="-1">Ignore rules</button>
+    </div>
+    <section id="report-panel" role="tabpanel" aria-labelledby="report-tab">
+      <h2 id="mode-heading">Report mode</h2>
+      <div id="modes" class="modes" role="radiogroup" aria-labelledby="mode-heading"></div>
+      <div class="row opt">
+        <span id="google-label">Google link matching</span>
+        <label class="sw"><input type="checkbox" id="googleMatch" aria-labelledby="google-label"><i></i></label>
+      </div>
+      <div class="row opt">
+        <span id="hints-label">Hover hints</span>
+        <label class="sw"><input type="checkbox" id="hoverHints" aria-labelledby="hints-label"><i></i></label>
+      </div>
+
+      <h2>Findings <small id="status" role="status"></small></h2>
+      <div id="legend"></div>
+      <div id="scan" class="scan"></div>
+    </section>
+
+    <section id="rules-panel" role="tabpanel" aria-labelledby="rules-tab" hidden>
+      <h2>Words after “same”</h2>
+      <p class="rule-note">Skip the parentheses check for these words.</p>
+      <form id="ignore-form">
+        <input id="ignore-word" aria-label="Word to ignore after same" placeholder="e.g. interest" required maxlength="64" disabled>
+        <button id="ignore-add" type="submit" disabled>Add</button>
+      </form>
+      <p id="ignore-status" class="rule-note" role="status"></p>
+      <ul id="ignore-list" class="ignore-list" aria-label="Ignored words"></ul>
+    </section>
+
+  </main>
+  <script src="modes/default.js"></script>
+  <script src="modes/bulk_no_rh.js"></script>
+  <script src="modes/bulk_rh.js"></script>
+  <script src="modes/standard.js"></script>
+  <script src="popup.js"></script>
+</body></html>
