@@ -170,7 +170,10 @@ function continueKey(url, platformId, targetId) {
 // Talk to content.js running inside the page.
 function sendMessageToTab(tabId, msg) {
   return new Promise((resolve, reject) => {
-    chrome.tabs.sendMessage(tabId, {...msg, scope: "sdc-section-capture"}, (response) => {
+    // Other capture listeners share this tab's message channel and validate type and timestamp.
+    const scope = "sdc-section-capture";
+    const message = {...msg, scope, type: `${scope}:${msg.action}`, timestamp: Date.now()};
+    chrome.tabs.sendMessage(tabId, message, (response) => {
       if (chrome.runtime.lastError) {
         reject(new Error(chrome.runtime.lastError.message));
         return;
