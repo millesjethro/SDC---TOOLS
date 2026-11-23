@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "SDC Capture Tools (Test)",
+  "name": "SDC Capture Tools",
   "description": "SDC Screenshooter and Others (Socmeds) in one extension.",
-  "version": "0.1.24",
+  "version": "0.2.0",
   "icons": {
     "16": "/icon-16.png",
     "32": "/icon-48.png",
@@ -125,12 +125,12 @@
       "description": "Capture generic page (all)"
     }
   },
-  "version_name": "0.1.24 test",
+  "version_name": "0.2.0",
   "background": {
     "service_worker": "background.js"
   },
   "action": {
-    "default_title": "SDC Capture Tools (Test)",
+    "default_title": "SDC Capture Tools",
     "default_popup": "popup.html"
   },
   "host_permissions": [

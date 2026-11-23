@@ -41,6 +41,19 @@ profileSelectorLayout() {
   }
   return null;
 }
+profileCaptureHeader(column, items) {
+  const named = column.querySelector("[data-testid='TopNavBar']") ||
+    column.parentElement?.querySelector(":scope > [data-testid='TopNavBar']");
+  const mainColumn = column.closest(xProfileMain);
+  const firstDiv = mainColumn?.querySelector(":scope > div:nth-of-type(1)");
+  const scopedFirstDiv = mainColumn === column || firstDiv?.matches("[data-testid='TopNavBar']")
+    ? firstDiv : null;
+  return [scopedFirstDiv, named].find(element =>
+    element && !element.contains(column) &&
+    !items.some(item => element.contains(item) || item.contains(element)) &&
+    !element.querySelector("[data-testid='UserDescription'], [data-testid='UserProfileHeader_Items']")
+  ) || null;
+}
 getProfileCaptureRegion() {
   const layout = this.profileSelectorLayout();
   if (!layout) return null;
@@ -55,12 +68,10 @@ getProfileCaptureRegion() {
   });
   const start = Math.max(0, Math.round(anchor.top + window.scrollY));
   const end = rows.at(-1).bottom;
-  const navbar = layout.followerList
-    ? layout.column.querySelector("[data-testid='TopNavBar']") ||
-      layout.column.parentElement?.querySelector(":scope > [data-testid='TopNavBar']")
-    : null;
-  const firstTop = navbar?.getBoundingClientRect().top;
-  const firstStart = Number.isFinite(firstTop) ? Math.min(start, Math.max(0, Math.round(firstTop + window.scrollY))) : start;
+  const header = this.profileCaptureHeader(layout.column, layout.items);
+  const headerTop = header?.getBoundingClientRect().top;
+  const firstStart = Number.isFinite(headerTop)
+    ? Math.min(start, Math.max(0, Math.round(headerTop + window.scrollY))) : start;
   return right > left && end > start ? {start, firstStart, end, left, width: right - left, rows} : null;
 }
 profileRowsForViewport() {
@@ -101,11 +112,13 @@ hideNoFollowContext(profile, firstItem) {
 hideProfileViewportChrome(column, items, preserveHeader, listHeader) {
   if (!column) return;
   const bounds = column.getBoundingClientRect();
-  const header = column.querySelector("[data-testid='TopNavBar']");
+  const header = this.profileCaptureHeader(column, items);
   const layers = this.document.querySelectorAll("#layers *, [data-testid='layers'] *, [data-testid='BottomBar'], [data-testid='TopNavBar']");
-  for (const element of new Set([...column.querySelectorAll("*"), ...layers])) {
+  const candidates = new Set([...column.querySelectorAll("*"), ...layers]);
+  if (header) candidates.add(header);
+  for (const element of candidates) {
     const box = element.getBoundingClientRect();
-    const navbar = element.matches("[data-testid='TopNavBar']");
+    const navbar = element === header || element.matches("[data-testid='TopNavBar']");
     if (box.width <= 0 || box.height <= 0 || box.right <= bounds.left || box.left >= bounds.right ||
         (!navbar && (box.bottom <= 0 || box.top >= window.innerHeight))) continue;
     const {position} = window.getComputedStyle(element);
@@ -159,18 +172,14 @@ prepareProfileChrome({firstFrame = false} = {}, layout = this.profileRowsForView
   if (!column) return;
   const items = layout?.items || this.profilePosts();
   const followerList = xFollowerTabs.has(this.location.pathname.split("/")[2]);
-  const preserveHeader = followerList && firstFrame;
   const listHeader = followerList ? column.querySelector(":scope > div:nth-of-type(2)") : null;
-  if (followerList) {
-    if (!preserveHeader && listHeader?.matches(xProfileSelectors.followers.start) &&
-        !Array.from(items).some(item => listHeader.contains(item))) {
-      this.rememberProfileStyle(listHeader, "visibility", "hidden");
-      this.removeFollowerTabActiveState(listHeader);
-    }
-  } else {
-    this.hideNoFollowContext(column, items[0]);
+  if (!firstFrame && listHeader?.matches(xProfileSelectors.followers.start) &&
+      !Array.from(items).some(item => listHeader.contains(item))) {
+    this.rememberProfileStyle(listHeader, "visibility", "hidden");
+    this.removeFollowerTabActiveState(listHeader);
   }
-  this.hideProfileViewportChrome(column, Array.from(items), preserveHeader, listHeader);
+  this.hideNoFollowContext(column, items[0]);
+  this.hideProfileViewportChrome(column, Array.from(items), firstFrame, listHeader);
 }
 async prepareProfileCaptureViewport(options) {
   let layout = this.profileRowsForViewport();
