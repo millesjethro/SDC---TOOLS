@@ -1,9 +1,9 @@
-# Toolbelt 1.1.1
+# Toolbelt 1.1.2
 
 Six tools in one Chrome/Chromium Manifest V3 extension: Translate, Delete,
 Items, Source, Width, and Link Shower.
 
-[Download Toolbelt 1.1.1 ZIP](https://raw.githubusercontent.com/millesjethro/SDC---TOOLS/main/Toolbelt-1.1.1.zip)
+[Download Toolbelt 1.1.2 ZIP](https://raw.githubusercontent.com/millesjethro/SDC---TOOLS/main/Toolbelt-1.1.2.zip)
 
 ## Install or update
 

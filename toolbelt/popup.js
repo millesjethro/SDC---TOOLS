@@ -8,10 +8,8 @@
 const tabButtons = document.querySelectorAll(".tab");
 const panes = {
   translate: document.getElementById("pane-translate"),
-  items: document.getElementById("pane-items"),
-  source: document.getElementById("pane-source"),
+  tools: document.getElementById("pane-tools"),
   links: document.getElementById("pane-links"),
-  width: document.getElementById("pane-width"),
 };
 
 tabButtons.forEach((btn) => {
@@ -25,7 +23,9 @@ tabButtons.forEach((btn) => {
 });
 
 chrome.storage.local.get("toolbeltTab", ({ toolbeltTab }) => {
-  const button = Array.from(tabButtons).find(b => b.dataset.pane === (toolbeltTab === "delete" ? "translate" : toolbeltTab));
+  const previousTabs = { delete: "translate", items: "tools", width: "tools", source: "tools" };
+  const pane = previousTabs[toolbeltTab] ?? toolbeltTab;
+  const button = Array.from(tabButtons).find((tab) => tab.dataset.pane === pane);
   if (button) button.click();
 });
 

@@ -123,11 +123,15 @@
   .status.error{ color: var(--bad); }
   .status.ok{ color: var(--good); }
 
-  .divider{
-    border:none;
+  .tool-section + .tool-section{
     border-top:1px solid var(--line);
-    margin:16px 0;
+    margin-top:16px;
+    padding-top:16px;
   }
+  .post-scan-group{ margin-top:10px; }
+  .post-scan{ display:flex; gap:8px; }
+  #maxPostsInput{ width:90px; flex:0 0 auto; }
+  #scanPostsBtn{ flex:1; }
 
   /* ---- Items pane ---- */
   .total-card{
@@ -200,9 +204,7 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline:2px so
 
   <nav class="tabs" id="tabs">
     <button class="tab active" data-pane="translate">Translate &amp; Delete</button>
-    <button class="tab" data-pane="items">Items</button>
-    <button class="tab" data-pane="width">Width</button>
-    <button class="tab" data-pane="source">Source</button>
+    <button class="tab" data-pane="tools">Tools</button>
     <button class="tab" data-pane="links">Links</button>
   </nav>
 
@@ -225,61 +227,54 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline:2px so
       <div id="translateStatus" class="status" role="status"></div>
     </section>
 
-    <!-- ================= ITEMS ================= -->
-    <section class="pane" id="pane-items">
-      <h2>Count Items</h2>
+    <section class="pane" id="pane-tools" aria-label="Tools">
+      <section class="tool-section" aria-labelledby="items-heading">
+        <h2 id="items-heading">Count Items</h2>
 
-
-      <div class="btn-row" style="margin-top:0;">
         <button id="scanBtn" class="btn btn-primary">Count Items</button>
-      </div>
 
-      <hr class="divider" />
-      <label class="field-label" for="maxPostsInput">Max posts to scan</label>
-      <div style="display:flex; gap:8px;">
-        <input type="text" id="maxPostsInput" inputmode="numeric" value="300" style="width:90px; flex:0 0 auto;" />
-        <button id="scanPostsBtn" class="btn btn-ghost" style="flex:1;">Count Facebook posts</button>
-      </div>
+        <div class="post-scan-group">
+          <label class="field-label" for="maxPostsInput">Max posts to scan</label>
+          <div class="post-scan">
+            <input type="text" id="maxPostsInput" inputmode="numeric" value="300" />
+            <button id="scanPostsBtn" class="btn btn-ghost">Count Facebook posts</button>
+          </div>
+        </div>
 
-      <div id="itemsStatus" class="status"></div>
+        <div id="itemsStatus" class="status" role="status"></div>
 
-      <div id="totalCard" class="total-card">
-        <div id="totalLabel" class="label">Total Pins</div>
-        <div id="totalValue" class="value">0</div>
-        <div id="totalSub" class="sub"></div>
-      </div>
+        <div id="totalCard" class="total-card">
+          <div id="totalLabel" class="label">Total Pins</div>
+          <div id="totalValue" class="value">0</div>
+          <div id="totalSub" class="sub"></div>
+        </div>
 
-      <div id="itemsList" class="list"></div>
-      <div id="itemsEmpty" class="empty">No matches found on this page.</div>
-    </section>
+        <div id="itemsList" class="list"></div>
+        <div id="itemsEmpty" class="empty">No matches found on this page.</div>
+      </section>
 
-    <!-- ================= SOURCE ================= -->
-    <section class="pane" id="pane-source">
-      <h2>Copy Source</h2>
+      <section class="tool-section" aria-labelledby="width-heading">
+        <h2 id="width-heading">Set Width</h2>
 
+        <label class="field-label" for="widthInput">Max width (px)</label>
+        <input type="text" id="widthInput" inputmode="numeric" value="940" />
 
-      <div class="btn-row btn-grid">
-        <button id="copySourceBtn" class="btn btn-primary">Copy Source</button>
-        <button id="saveSourceBtn" class="btn btn-ghost">Save .txt</button>
-      </div>
-      <div id="sourceStatus" class="status"></div>
-      <hr class="divider" />
+        <div class="btn-row btn-grid">
+          <button id="applyWidthBtn" class="btn btn-primary">Apply</button>
+          <button id="resetWidthBtn" class="btn btn-ghost">Reset</button>
+        </div>
+        <div id="widthStatus" class="status" role="status"></div>
+      </section>
 
-    </section>
+      <section class="tool-section" aria-labelledby="source-heading">
+        <h2 id="source-heading">Copy Source</h2>
 
-    <!-- ================= WIDTH ================= -->
-    <section class="pane" id="pane-width">
-      <h2>Set Width</h2>
-
-
-      <label class="field-label" for="widthInput">Max width (px)</label>
-      <input type="text" id="widthInput" inputmode="numeric" value="940" />
-
-      <div class="btn-row btn-grid">
-        <button id="applyWidthBtn" class="btn btn-primary">Apply</button>
-        <button id="resetWidthBtn" class="btn btn-ghost">Reset</button>
-      </div>
-      <div id="widthStatus" class="status"></div>
+        <div class="btn-row btn-grid">
+          <button id="copySourceBtn" class="btn btn-primary">Copy Source</button>
+          <button id="saveSourceBtn" class="btn btn-ghost">Save .txt</button>
+        </div>
+        <div id="sourceStatus" class="status" role="status"></div>
+      </section>
     </section>
 
     <section class="pane" id="pane-links">

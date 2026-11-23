@@ -2,7 +2,7 @@
 
 [SDC Capture Tools](./sdc-capture-tools/) is a Chrome extension with platform-specific screenshot capture and Bulk Mode.
 
-[Toolbelt](./toolbelt/) is a Chrome extension for translation, page editing, item counts, width, source, and link previews. [Download Toolbelt 1.1.1 ZIP](https://raw.githubusercontent.com/millesjethro/SDC---TOOLS/main/Toolbelt-1.1.1.zip)
+[Toolbelt](./toolbelt/) is a Chrome extension for translation, page editing, item counts, width, source, and link previews. [Download Toolbelt 1.1.2 ZIP](https://raw.githubusercontent.com/millesjethro/SDC---TOOLS/main/Toolbelt-1.1.2.zip)
 
 ## Install an extension
 
