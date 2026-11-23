@@ -13,6 +13,121 @@ function isXFollowerListUrl(url) {
   }
 }
 
+async function captureXProfileRegion(tabId, region, mode, currentOffset) {
+  const {url} = await L.tabs.get(tabId);
+  const landing = mode === "landing";
+  const followerList = isXFollowerListUrl(url);
+  const startingAtTop = mode === "first" || landing || currentOffset === 0;
+  const start = followerList ? Math.round(currentOffset) :
+    startingAtTop ? region.firstStart ?? region.start : Math.max(region.start, currentOffset);
+  const limit = start + M;
+  const results = [];
+  const landingRows = new Set();
+  let offset = start;
+  let canvasHeight = 0;
+  let captureEnded = false;
+
+  while (offset < limit) {
+    if (await ma.getItem("local:abort")) return {};
+    if ((await L.tabs.get(tabId)).url !== url) throw new Error("The X page changed during capture.");
+    const captureCurrentViewport = followerList && offset === start;
+    if (!captureCurrentViewport) await m("setScrollY", offset, tabId);
+
+    let viewport;
+    let current;
+    let viewportEnd;
+    let settledBottom;
+    let rowEnd;
+    // Give a virtualized viewport time to mount rows, and give a lazy-loading
+    // list several chances to grow when we reach its current bottom.
+    for (let attempt = 0; attempt < 4; attempt++) {
+      await I(attempt === 0 ? 550 : 750);
+      if (await ma.getItem("local:abort")) return {};
+      current = await m("prepareTwitterProfileViewport", {
+        firstFrame: startingAtTop && results.length === 0
+      }, tabId);
+      viewport = await m("getPageDimensions", {}, tabId);
+      if (!viewport || !current) throw new Error("Could not read the X timeline viewport.");
+      viewportEnd = Math.round(viewport.scrollY) + viewport.height;
+      rowEnd = current.rows.at(-1)?.bottom ?? 0;
+      const atBottom = viewportEnd >= viewport.totalHeight - 1;
+      settledBottom = atBottom && !current.loading;
+      if (!atBottom && !current.loading && rowEnd > offset && viewportEnd > offset) break;
+      if (attempt < 3 && !captureCurrentViewport) await m("setScrollY", offset, tabId);
+    }
+
+    const viewportTop = Math.round(viewport.scrollY);
+    if (viewportTop > offset + 1) throw new Error("X scrolled past the next part of the timeline.");
+    const cap = Math.min(limit, viewportEnd);
+    let end = Math.min(cap, rowEnd);
+    // The first tile may be entirely within the profile header.
+    if (offset === start && current.rows[0]?.top >= cap) end = cap;
+    if (end <= offset) {
+      if (settledBottom || current.loading) {
+        captureEnded = settledBottom;
+        break;
+      }
+      throw new Error("The next part of the X timeline did not render.");
+    }
+
+    if (end === limit) {
+      const cutoff = current.rows.findLast(row => row.top > offset && row.top <= limit);
+      if (cutoff) end = cutoff.top;
+    }
+
+    let landingComplete = false;
+    if (landing) {
+      for (const row of current.rows) {
+        if (row.omit || row.bottom <= offset || row.top >= end) continue;
+        landingRows.add(row.top);
+        if (landingRows.size === 3 && row.bottom <= end) {
+          end = row.bottom;
+          landingComplete = true;
+          break;
+        }
+        if (landingRows.size === 3) break;
+      }
+    }
+
+    const spans = [];
+    let from = offset;
+    for (const row of current.rows) {
+      if (!row.omit || row.bottom <= from || row.top >= end) continue;
+      if (row.top > from) spans.push({from, to: row.top});
+      from = Math.max(from, row.bottom);
+    }
+    if (from < end) spans.push({from, to: end});
+
+    if (spans.length) {
+      const dataUrl = await captureTargetTab(tabId);
+      if ((await L.tabs.get(tabId)).url !== url) throw new Error("The X page changed during capture.");
+      for (const {from: y, to} of spans) {
+        const height = to - y;
+        results.push({dataUrl, sx: region.left, sy: Math.max(0, y - viewportTop),
+          dx: 0, dy: canvasHeight, height});
+        canvasHeight += height;
+      }
+    }
+    offset = end;
+    captureEnded = settledBottom && end >= rowEnd;
+    if (landingComplete || captureEnded || end === limit) break;
+    // A row-aligned cut just before the configured segment limit ends this shot.
+    if (cap === limit && end < limit && rowEnd >= limit) break;
+  }
+
+  if (!results.length) {
+    throw new Error(captureEnded ? "The previous screenshot reached the end of this X list."
+      : "No visible X timeline rows could be captured.");
+  }
+  if (!captureEnded) await m("setScrollY", offset, tabId);
+  const {username, tab} = await m("getDataFromTwitterUrl", {}, tabId);
+  return {
+    results, canvasWidth: region.width, canvasHeight,
+    nextCaptureY: offset, captureEnded,
+    metadata: {prefix: "twitter_profile", username, tab}
+  };
+}
+
 async function captureTargetTab(tabId) {
   const tab = await L.tabs.get(tabId);
   if (!tab.active) throw new Error("Keep the capture tab selected in its window");
@@ -37,11 +152,16 @@ const followerList=isXFollowerListUrl(url);
 try {
 await m("initializeTwitterProfileCapture",t&&!followerList,e),await I(500);
 const p=await m("getScrollY",{},e);
+let region=await m("getTwitterProfileCaptureRegion",{},e);
+if (region) return await captureXProfileRegion(e,region,o,p);
 const r=l?await m("getTwitterLandingPageCutoff",{},e):M;
 if (!followerList) {
   const y=r+p;let c=!0;for(;c;)c=await m("loadTwitterProfile",y,e),c&&await I(2e3);await m("setScrollY",p,e),await I(500);
+  region=await m("getTwitterProfileCaptureRegion",{},e);
+  if (region) return await captureXProfileRegion(e,region,o,p);
 }
 let d=0,w=0,x=0,j=0,z=0,u=!0,s=[];for(;u||x<z;){
+await m("prepareTwitterProfileChrome",{firstFrame:u&&(t||p===0)},e);
 const A=await m("getTwitterProfileDimensions",{},e);if(!A)break;let{top:_,left:T,width:h,height:k,totalHeight:f,scrollY:P}=A;u&&(d=P===0?_:P,w=P);let S=0,C=x;x+=k-_,j=h,z=f-d;let D=P-w;!u&&k>D&&(_=k-D),w=P;if(!followerList&&await m("processTwitterProfilePosts",{},e))await I(500);const Y=await captureTargetTab(e);if(s.push({dataUrl:Y,sx:T,sy:_,height:k,dx:S,dy:C}),u=!1,x>r&&z>r){const E=l?await m("getTwitterLandingPageCutoff",{},e):await m("getTwitterProfileCutoff",r+d,e);E?z=E-d:z=r-d}if(x>=z)break;await m("scrollNextWindow",{},e),await I(500)}const{username:n,tab:g}=await m("getDataFromTwitterUrl",{},e);return{results:s,canvasWidth:j,canvasHeight:z,metadata:{prefix:"twitter_profile",username:n,tab:g}}
 } finally {
   await m("terminateTwitterProfileCapture",{},e).catch(() => {});
@@ -164,7 +284,7 @@ async function batchCaptureTimeline(tabId, domain, fileName, dedupe, maxShots, s
     if (shots.length && !result.results.length) break;
     shots.push(await batchSaveStitchedShot(result, fileName, dedupe, saveMetadata, tabId, shortPlatformPrefixes));
     // Short captures indicate the timeline ended before a full segment could be filled.
-    if (result.canvasHeight < 14000 || runNumber === maxShots) break;
+    if ((result.captureEnded ?? result.canvasHeight < 14000) || runNumber === maxShots) break;
     await I(1800);
   }
   return shots;
@@ -321,6 +441,9 @@ async function captureWithTimelineCheckpoint(capture, args = {}) {
     }
     const saved = (await chrome.storage.session.get(key))[key];
     const restarting = args.mode === "first";
+    if (!restarting && saved?.url === tab.url && saved.ended) {
+      throw new Error("The previous screenshot reached the end of this X list.");
+    }
     const [position] = await L.scripting.executeScript({
       target: {tabId},
       func: async (expectedUrl, savedHeight) => {
@@ -345,19 +468,19 @@ async function captureWithTimelineCheckpoint(capture, args = {}) {
     const token = crypto.randomUUID();
     await chrome.storage.session.set({[key]: {url: tab.url, height: position.result, token}});
     const result = await capture(args, tabId);
-    const nextHeight = await m("getScrollY", {}, tabId);
-    return {...result, timelineCheckpoint: {tabId, token, nextHeight}};
+    const nextHeight = result.nextCaptureY ?? await m("getScrollY", {}, tabId);
+    return {...result, timelineCheckpoint: {tabId, token, nextHeight, ended: result.captureEnded}};
   } finally {
     continuingTabs.delete(tabId);
     invalidatedCaptures.delete(tabId);
   }
 }
 
-async function commitTimelineCheckpoint({tabId, token, nextHeight}) {
+async function commitTimelineCheckpoint({tabId, token, nextHeight, ended}) {
   const key = checkpointKey(tabId);
   const saved = (await chrome.storage.session.get(key))[key];
   if (saved?.token === token && Number.isFinite(nextHeight) && nextHeight >= 0) {
-    await chrome.storage.session.set({[key]: {...saved, height: nextHeight}});
+    await chrome.storage.session.set({[key]: {...saved, height: nextHeight, ended: ended === true}});
   }
 }
 

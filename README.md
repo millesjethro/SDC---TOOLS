@@ -13,6 +13,7 @@
 
 | Version | Release page | Download |
 | --- | --- | --- |
+| 0.1.24 test | [Release notes](https://github.com/millesjethro/SDC---TOOLS/releases/tag/capture-tools-v0.1.24-test) | [ZIP](https://raw.githubusercontent.com/millesjethro/SDC---TOOLS/capture-tools-v0.1.24-test/SDC-Capture-Tools-0.1.24-test.zip) |
 | 0.1.23 test | [Release notes](https://github.com/millesjethro/SDC---TOOLS/releases/tag/capture-tools-v0.1.23-test) | [ZIP](https://raw.githubusercontent.com/millesjethro/SDC---TOOLS/capture-tools-v0.1.23-test/SDC-Capture-Tools-0.1.23-test.zip) |
 | 0.1.22 test | [Release notes](https://github.com/millesjethro/SDC---TOOLS/releases/tag/capture-tools-v0.1.22-test) | [ZIP](https://raw.githubusercontent.com/millesjethro/SDC---TOOLS/capture-tools-v0.1.22-test/SDC-Capture-Tools-0.1.22-test.zip) |
 | 0.1.21 test | [Release notes](https://github.com/millesjethro/SDC---TOOLS/releases/tag/capture-tools-v0.1.21-test) | [ZIP](https://raw.githubusercontent.com/millesjethro/SDC---TOOLS/capture-tools-v0.1.21-test/SDC-Capture-Tools-0.1.21-test.zip) |
