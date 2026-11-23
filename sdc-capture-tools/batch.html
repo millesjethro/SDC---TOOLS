@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SDC Screenshooter — Bulk Mode</title>
+    <link rel="stylesheet" href="batch.css" />
+  </head>
+  <body>
+    <div class="card">
+      <div class="titlebar">
+        <span class="titlebar-text">Bulk Mode</span>
+        <span class="titlebar-sub">SDC Screenshooter · capture open tabs from left to right</span>
+      </div>
+
+      <div class="panel rows-panel">
+        <div class="rows-header">
+          <span class="col-label col-label--url">Tab URL</span>
+          <span class="col-label col-label--name">File name</span>
+          <span class="col-label col-label--mode" id="rowModeLabel" hidden>Capture mode</span>
+          <span class="col-label col-label--shots" id="rowShotsLabel" hidden>Max Shots</span>
+        </div>
+        <div id="rows" class="rows"></div>
+      </div>
+
+      <div class="panel run-panel">
+        <div class="controls-row">
+          <div class="mode-controls">
+            <select aria-label="Capture mode for all tabs" id="actionType" class="mode-select">
+              <option value="post">Post</option>
+              <option value="postComments">Posts + Comments</option>
+              <option value="landingPage">Landing Page</option>
+              <option value="timelineLanding">Timeline landing</option>
+              <option value="timeline">Timeline</option>
+              <option value="profileInfo">Profile Information</option>
+            </select>
+            <label class="toggle">
+              <input type="checkbox" id="allSameChk" role="switch" checked />
+              <span class="track"></span>
+              <span>All Same</span>
+            </label>
+            <label id="sharedShotsLabel" hidden>Max Shots <input id="sharedMaxShots" class="max-shots" type="number" min="1" step="1" value="10" /></label>
+          </div>
+          <div class="controls-right">
+            <button id="cancelBtn" class="btn btn--red" hidden>Cancel</button>
+            <button id="startBtn" class="btn btn--purple">Start</button>
+          </div>
+        </div>
+
+        <div class="extra-options">
+          <label class="toggle">
+            <input type="checkbox" id="saveMetadataChk" role="switch" />
+            <span class="track"></span>
+            <span>Metadata (saved as .txt)</span>
+          </label>
+          <label class="toggle">
+            <input type="checkbox" id="shortPlatformPrefixesChk" role="switch" />
+            <span class="track"></span>
+            <span>Use short platform prefixes</span>
+          </label>
+        </div>
+
+        <p>Keep the capture window visible while you work in a separate Chrome window. Bulk Mode uses the window you opened Bulk Mode from.</p>
+        <div class="progress-line" id="progressLine" hidden></div>
+        <button class="details-toggle" id="detailsToggle" hidden>Show details ▾</button>
+        <div class="log-wrap" id="logWrap" hidden>
+          <ul class="log" id="logList"></ul>
+        </div>
+      </div>
+
+      <div class="bottom-row">
+        <button id="exitBtn" class="btn btn--red">Exit</button>
+        <button id="instructionBtn" class="btn btn--blue">Instructions</button>
+      </div>
+    </div>
+
+    <div id="toast" class="toast" hidden></div>
+
+    <script src="batch.js"></script>
+  </body>
+</html>

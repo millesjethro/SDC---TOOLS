@@ -1,0 +1,139 @@
+{
+  "manifest_version": 3,
+  "name": "SDC Capture Tools (Test)",
+  "description": "SDC Screenshooter and Others (Socmeds) in one extension.",
+  "version": "0.1.23",
+  "icons": {
+    "16": "/icon-16.png",
+    "32": "/icon-48.png",
+    "48": "/icon-48.png",
+    "96": "/icon-128.png",
+    "128": "/icon-128.png"
+  },
+  "permissions": [
+    "activeTab",
+    "downloads",
+    "tabs",
+    "scripting",
+    "storage",
+    "nativeMessaging",
+    "cookies"
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "do-screenshot.js"
+      ],
+      "matches": [
+        "*://*/*"
+      ]
+    },
+    {
+      "resources": [
+        "screenshots-summary.js"
+      ],
+      "matches": [
+        "*://*/*"
+      ]
+    }
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "facebook.js"
+      ]
+    },
+    {
+      "matches": [
+        "*://*.instagram.com/*"
+      ],
+      "js": [
+        "instagram.js"
+      ]
+    },
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "content-scripts/content.js",
+        "content-scripts/generic.js"
+      ]
+    },
+    {
+      "matches": [
+        "*://*.tiktok.com/*"
+      ],
+      "js": [
+        "content-scripts/tiktok.js"
+      ]
+    },
+    {
+      "matches": [
+        "*://*.x.com/*",
+        "*://*.twitter.com/*"
+      ],
+      "js": [
+        "content-scripts/twitter.js"
+      ]
+    },
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "section-capture/content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "commands": {
+    "post": {
+      "description": "Capture single post"
+    },
+    "postComments": {
+      "description": "Capture single post with comments"
+    },
+    "profileFirst": {
+      "description": "Capture profile timeline (first)"
+    },
+    "profile": {
+      "description": "Capture profile timeline (succeeding)"
+    },
+    "profileLanding": {
+      "description": "Capture profile timeline (landing)"
+    },
+    "story": {
+      "description": "Capture story"
+    },
+    "profileInfo": {
+      "description": "Capture profile information"
+    },
+    "marketplaceFirst": {
+      "description": "Capture marketplace profile (first)"
+    },
+    "marketplace": {
+      "description": "Capture marketplace profile (succeeding)"
+    },
+    "page": {
+      "description": "Capture generic page (first)"
+    },
+    "fullPage": {
+      "description": "Capture generic page (all)"
+    }
+  },
+  "version_name": "0.1.23 test",
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "SDC Capture Tools (Test)",
+    "default_popup": "popup.html"
+  },
+  "host_permissions": [
+    "<all_urls>"
+  ]
+}

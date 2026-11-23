@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SDC Screenshooter — Instructions</title>
+    <link rel="stylesheet" href="batch.css" />
+  </head>
+  <body>
+    <div class="card">
+      <div class="titlebar titlebar--center">
+        <span class="titlebar-text">Instructions</span>
+      </div>
+      <div class="panel instructions-panel">
+        <ul class="instructions-list">
+          <li>For <strong>Post</strong> and <strong>Posts + Comments</strong>, open each post in its own tab. Use <strong>Landing Page</strong> for general pages or <strong>Profile Information</strong> for supported profiles.</li>
+          <li><strong>File Name</strong> is optional. Leave it blank to use the extension's normal automatic name. If two rows end up with the same final name, later ones are saved as "name (2)", "name (3)", and so on, so nothing gets overwritten.</li>
+          <li>Turn on <strong>Use short platform prefixes</strong> to use FB, IG, TT, or X in automatic filenames.</li>
+          <li>Open the pages you want to capture in one Chrome window, then open Bulk Mode from that window. Bulk Mode lists web tabs in order and captures them from left to right.</li>
+          <li>Keep <strong>All Same</strong> on to use one capture mode for every tab. Turn it off to choose a mode beside each tab.</li>
+          <li><strong>Timeline landing</strong> captures the landing view of a supported profile. <strong>Timeline</strong> captures successive screenshots until the timeline ends or reaches <strong>Max Shots</strong> (10 by default).</li>
+          <li>Turn on <strong>Metadata (saved as .txt)</strong> to save capture details in a text file named after the screenshot. A Timeline run saves one text file per tab, named after its first screenshot and listing all screenshots for that tab.</li>
+          <li>Keep the capture window visible while you work in a separate Chrome window.</li>
+          <li><strong>Cancel</strong> stops a run after its current step finishes. <strong>Exit</strong> closes this window.</li>
+        </ul>
+      </div>
+      <div class="bottom-row bottom-row--single">
+        <button id="backBtn" class="btn btn--blue">Back</button>
+      </div>
+    </div>
+
+    <script src="instructions.js"></script>
+  </body>
+</html>

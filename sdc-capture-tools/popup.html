@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SDC Capture Tools</title>
+    <link rel="stylesheet" href="/assets/popup-CDSK3YTU.css">
+    <link rel="stylesheet" href="/section-capture/popup.css">
+    <link rel="stylesheet" href="/popup-layout.css">
+  </head>
+  <body>
+    <header class="popup-header">
+      <h1>SDC Capture Tools</h1>
+      <p id="platformLabel" role="status">Detecting platform…</p>
+    </header>
+    <main class="popup-controls">
+      <div id="screenshooterControls" hidden>
+        <div id="root"></div>
+        <button id="sdc-batch-mode-btn" type="button">Open Bulk Mode</button>
+      </div>
+      <div id="mainUI" hidden>
+        <div class="two-col">
+          <div class="field">
+            <label id="sectionLabel">Section</label>
+            <div class="option-list" id="includeList" role="radiogroup" aria-labelledby="sectionLabel"></div>
+          </div>
+
+          <div class="field">
+            <label id="screenshotTypeLabel">Screenshot Type</label>
+            <div class="option-list" id="sectionList" role="radiogroup" aria-labelledby="screenshotTypeLabel"></div>
+          </div>
+        </div>
+
+        <div class="field" id="photoIndexField" style="display:none;">
+          <label for="photoIndexInput">Which photo to keep <span style="text-transform:none; font-weight:400; color:var(--text-faint);">— blank for default</span></label>
+          <div class="input-row">
+            <input type="number" id="photoIndexInput" min="1" step="1" placeholder="e.g. 2" />
+          </div>
+        </div>
+
+        <div class="field" id="landingCountField" style="display:none;">
+          <label for="landingCountInput">Items to capture</label>
+          <div class="input-row">
+            <input type="number" id="landingCountInput" min="1" step="1" placeholder="3" />
+          </div>
+        </div>
+
+        <div class="field" id="resumeField" style="display:none;">
+          <label for="resumeOffsetInput">Resume position (px) <span style="text-transform:none; font-weight:400; color:var(--text-faint);">— for Continue</span></label>
+          <div class="input-row">
+            <input type="number" id="resumeOffsetInput" min="0" step="1" placeholder="0" />
+          </div>
+          <div id="resumeHint" style="margin-top:5px; font-size:10.5px; color:var(--text-faint); font-family:var(--mono);"></div>
+        </div>
+
+        <div class="field">
+          <label>Format</label>
+          <div class="segmented">
+            <input type="radio" name="format" id="fmt-jpeg" value="jpeg" checked />
+            <label for="fmt-jpeg">JPG</label>
+            <input type="radio" name="format" id="fmt-png" value="png" />
+            <label for="fmt-png">PNG</label>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="fileName"><span class="dot"></span>File name</label>
+          <div class="input-row">
+            <input type="text" id="fileName" spellcheck="false" />
+            <span class="prefix suffix" id="fileExt">.jpg</span>
+          </div>
+        </div>
+
+        <div class="capture-wrap">
+          <span class="corner tl"></span>
+          <span class="corner tr"></span>
+          <span class="corner bl"></span>
+          <span class="corner br"></span>
+          <button id="captureBtn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+              <circle cx="12" cy="13" r="4"/>
+            </svg>
+            Capture screenshot
+          </button>
+        </div>
+
+        <div class="status-row">
+          <span class="status-dot" id="statusDot"></span>
+          <span id="status" role="status">Ready.</span>
+        </div>
+        <progress id="captureProgress" class="capture-progress" aria-label="Screenshot chunks captured" hidden></progress>
+
+        <a id="downloadLink" download="capture.png">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 3v12"/>
+            <path d="M6 11l6 6 6-6"/>
+            <path d="M5 21h14"/>
+          </svg>
+          Download screenshot
+        </a>
+
+        <div class="preview-wrap" id="previewWrap">
+          <span class="corner tl"></span>
+          <span class="corner tr"></span>
+          <span class="corner bl"></span>
+          <span class="corner br"></span>
+          <img id="preview" alt="Captured screenshot preview" />
+        </div>
+      </div>
+    </main>
+    <script src="/section-capture/registry.js"></script>
+    <script src="/section-capture/engine.js"></script>
+    <script src="/section-capture/platforms/threads/threads-selectors.js"></script>
+    <script src="/section-capture/platforms/threads/threads-capture.js"></script>
+    <script src="/section-capture/platforms/youtube/youtube-selectors.js"></script>
+    <script src="/section-capture/platforms/youtube/youtube-capture.js"></script>
+    <script src="/section-capture/platforms/pinterest/pinterest-selectors.js"></script>
+    <script src="/section-capture/platforms/pinterest/pinterest-capture.js"></script>
+    <script src="/section-capture/platforms/linkedin/linkedin-selectors.js"></script>
+    <script src="/section-capture/platforms/linkedin/linkedin-capture.js"></script>
+    <script src="/section-capture/platforms/signalhire/signalhire-selectors.js"></script>
+    <script src="/section-capture/platforms/signalhire/signalhire-capture.js"></script>
+    <script src="/section-capture/platforms/rocketreach/rocketreach-selectors.js"></script>
+    <script src="/section-capture/platforms/rocketreach/rocketreach-capture.js"></script>
+    <script src="/section-capture/platforms/google/google-selectors.js"></script>
+    <script src="/section-capture/platforms/google/google-capture.js"></script>
+    <script src="/section-capture/platforms/vk/vk-selectors.js"></script>
+    <script src="/section-capture/platforms/vk/vk-capture.js"></script>
+    <script src="/section-capture/platforms/soundcloud/soundcloud-selectors.js"></script>
+    <script src="/section-capture/platforms/soundcloud/soundcloud-capture.js"></script>
+    <script src="/section-capture/platforms/classmates/classmates-selectors.js"></script>
+    <script src="/section-capture/platforms/classmates/classmates-capture.js"></script>
+    <script src="/section-capture/platforms/zoominfo/zoominfo-selectors.js"></script>
+    <script src="/section-capture/platforms/zoominfo/zoominfo-capture.js"></script>
+    <script src="/section-capture/platforms/mugshots/mugshots-selectors.js"></script>
+    <script src="/section-capture/platforms/mugshots/mugshots-capture.js"></script>
+    <script type="module" src="/popup-entry.js"></script>
+  </body>
+</html>

@@ -1,0 +1,113 @@
+:root {
+  color-scheme: dark;
+  background: var(--bg);
+  color: var(--text);
+  font: 13px/1.45 var(--sans);
+}
+
+body {
+  width: 350px;
+  margin: 0;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+.popup-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.popup-header h1 {
+  font-size: 17px;
+  line-height: 1.25;
+}
+
+.popup-header p {
+  margin-top: 4px;
+  color: var(--text-faint);
+  overflow-wrap: anywhere;
+}
+
+.popup-controls {
+  padding: 16px 20px 20px;
+}
+
+#root h2 {
+  color: var(--text-faint);
+  font-size: 12px;
+}
+
+#root .pill,
+#root input[type="text"],
+#root pre,
+#sdc-batch-mode-btn {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+#root .pill.active {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+#root .btn {
+  border-radius: 8px;
+}
+
+#root .btn-orange {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--bg);
+  font-weight: 700;
+}
+
+#root .btn-dark {
+  background: var(--surface-2);
+  border-color: var(--border);
+  color: var(--text);
+}
+
+#root .link {
+  color: #b4a3ff;
+}
+
+#root .video-options {
+  margin-top: 12px;
+  padding: 9px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+#root .video-options summary {
+  cursor: pointer;
+}
+
+#root .video-options[open] summary {
+  margin-bottom: 8px;
+}
+
+#sdc-batch-mode-btn {
+  width: 100%;
+  margin-top: 12px;
+}
+
+:focus-visible,
+.option-list .visually-hidden:focus-visible + label {
+  outline: 2px solid #aa96ff;
+  outline-offset: 2px;
+}
+
+.option-list .visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  clip-path: inset(50%);
+  overflow: hidden;
+  white-space: nowrap;
+}
