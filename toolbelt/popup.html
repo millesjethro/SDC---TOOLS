@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Toolbelt</title>
+<style>
+  :root{
+    --bg:        #1b1d21;
+    --panel:     #232629;
+    --panel-2:   #2b2e33;
+    --line:      #35383d;
+    --ink:       #eceeef;
+    --muted:     #9a9fa6;
+    --accent:    #FFD93D;
+    --accent-ink:#1b1d21;
+    --good:      #4fd1a5;
+    --bad:       #ef6a5f;
+  }
+  * { box-sizing: border-box; }
+  html, body{
+    margin:0;
+    width:360px;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+
+  /* ---- Tab rail ---- */
+  .tabs{
+    display:flex;
+    background: var(--panel);
+    border-bottom: 1px solid var(--line);
+  }
+  .tab{
+    flex:1 0 auto;
+    padding:12px 7px;
+    background:none;
+    border:none;
+    color: var(--muted);
+    font-size:10.5px;
+    font-weight:600;
+    letter-spacing:.1px;
+    cursor:pointer;
+    position:relative;
+  }
+  .tab.active{ color: var(--ink); }
+  .tab.active::after{
+    content:"";
+    position:absolute;
+    left:14px; right:14px; bottom:0;
+    height:2px;
+    background: var(--accent);
+    border-radius:2px 2px 0 0;
+  }
+
+  main{ padding:16px 18px 14px; }
+  .pane{ display:none; }
+  .pane.active{ display:block; }
+
+  h2{
+    margin:0 0 12px;
+    font-size:14.5px;
+    font-weight:700;
+  }
+
+  label.field-label{
+    display:block;
+    font-size:11px;
+    font-weight:700;
+    text-transform:uppercase;
+    letter-spacing:.5px;
+    color: var(--muted);
+    margin-bottom:6px;
+  }
+
+  select, input[type="text"]{
+    width:100%;
+    background: var(--panel-2);
+    border:1px solid var(--line);
+    color: var(--ink);
+    padding:9px 10px;
+    border-radius:8px;
+    font-size:13px;
+    outline:none;
+  }
+  select:focus, input[type="text"]:focus{ border-color: var(--accent); }
+
+  button{ font-family: inherit; }
+  .btn{
+    width:100%;
+    border:none;
+    padding:11px 14px;
+    border-radius:9px;
+    font-size:13.5px;
+    font-weight:700;
+    cursor:pointer;
+    transition: transform .1s ease, opacity .15s ease, background .15s ease;
+  }
+  .btn:active{ transform: scale(0.98); }
+  .btn:disabled{ opacity:.5; cursor:default; transform:none; }
+  .btn-primary{ background: var(--accent); color: var(--accent-ink); }
+  .btn-primary:hover:not(:disabled){ background:#ffe478; }
+  .btn-ghost{
+    background: var(--panel-2);
+    color: var(--ink);
+    border:1px solid var(--line);
+  }
+  .btn-ghost:hover:not(:disabled){ border-color:#4a4e55; }
+  .btn-danger-active{ background: var(--bad); color:#fff; }
+  .btn-on{ background: var(--good); color: var(--accent-ink); border-color: var(--good); }
+  .btn-row{ display:flex; flex-direction:column; gap:8px; margin-top:10px; }
+
+  .btn-grid{ display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); }
+
+  .status:empty{ display:none; }
+  .status{
+    margin-top:10px;
+    font-size:11.5px;
+    color: var(--muted);
+    min-height:14px;
+    line-height:1.5;
+  }
+  .status.error{ color: var(--bad); }
+  .status.ok{ color: var(--good); }
+
+  .divider{
+    border:none;
+    border-top:1px solid var(--line);
+    margin:16px 0;
+  }
+
+  /* ---- Items pane ---- */
+  .total-card{
+    margin-top:14px;
+    padding:14px 16px;
+    border-radius:10px;
+    background: var(--panel-2);
+    border:1px solid var(--line);
+    display:none;
+  }
+  .total-card.show{ display:block; }
+  .total-card .label{
+    font-size:10.5px;
+    text-transform:uppercase;
+    letter-spacing:.6px;
+    color: var(--muted);
+    font-weight:700;
+  }
+  .total-card .value{
+    font-size:26px;
+    font-weight:800;
+    color: var(--accent);
+    margin-top:2px;
+  }
+  .total-card .sub{ margin-top:2px; font-size:11px; color: var(--muted); }
+
+  .list{
+    margin-top:12px;
+    max-height:190px;
+    overflow-y:auto;
+    border-radius:8px;
+    border:1px solid var(--line);
+    display:none;
+  }
+  .list.show{ display:block; }
+  .row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:10px;
+    padding:8px 11px;
+    border-bottom:1px solid var(--line);
+    font-size:12px;
+  }
+  .row:last-child{ border-bottom:none; }
+  .row .name{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .row .count{
+    flex:0 0 auto;
+    background: var(--bg);
+    color: var(--accent);
+    font-weight:700;
+    padding:2px 8px;
+    border-radius:999px;
+  }
+  .empty{
+    margin-top:12px;
+    font-size:12px;
+    color: var(--muted);
+    text-align:center;
+    padding:8px 4px;
+    display:none;
+  }
+  .empty.show{ display:block; }
+
+button:focus-visible, input:focus-visible, select:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+</style>
+<link rel="stylesheet" href="link-popup.css">
+</head>
+<body>
+
+  <nav class="tabs" id="tabs">
+    <button class="tab active" data-pane="translate">Translate &amp; Delete</button>
+    <button class="tab" data-pane="items">Items</button>
+    <button class="tab" data-pane="width">Width</button>
+    <button class="tab" data-pane="source">Source</button>
+    <button class="tab" data-pane="links">Links</button>
+  </nav>
+
+  <main>
+
+    <!-- ================= TRANSLATE ================= -->
+    <section class="pane active" id="pane-translate">
+      <h2>Translate and Delete</h2>
+      <label class="field-label" for="lang">Target language</label>
+      <select id="lang"></select>
+
+      <div class="btn-row btn-grid">
+        <button id="translateSingleBtn" class="btn btn-ghost">Translate Single</button>
+        <button id="translatePageBtn" class="btn btn-primary">Translate Page</button>
+        <button id="deleteSingleBtn" class="btn btn-ghost">Single Delete</button>
+        <button id="deleteGroupBtn" class="btn btn-ghost">Bulk Delete</button>
+        <button id="editBtn" class="btn btn-ghost">Edit</button>
+        <button id="stopBtn" class="btn btn-ghost">Stop</button>
+      </div>
+      <div id="translateStatus" class="status" role="status"></div>
+    </section>
+
+    <!-- ================= ITEMS ================= -->
+    <section class="pane" id="pane-items">
+      <h2>Count Items</h2>
+
+
+      <div class="btn-row" style="margin-top:0;">
+        <button id="scanBtn" class="btn btn-primary">Count Items</button>
+      </div>
+
+      <hr class="divider" />
+      <label class="field-label" for="maxPostsInput">Max posts to scan</label>
+      <div style="display:flex; gap:8px;">
+        <input type="text" id="maxPostsInput" inputmode="numeric" value="300" style="width:90px; flex:0 0 auto;" />
+        <button id="scanPostsBtn" class="btn btn-ghost" style="flex:1;">Count Facebook posts</button>
+      </div>
+
+      <div id="itemsStatus" class="status"></div>
+
+      <div id="totalCard" class="total-card">
+        <div id="totalLabel" class="label">Total Pins</div>
+        <div id="totalValue" class="value">0</div>
+        <div id="totalSub" class="sub"></div>
+      </div>
+
+      <div id="itemsList" class="list"></div>
+      <div id="itemsEmpty" class="empty">No matches found on this page.</div>
+    </section>
+
+    <!-- ================= SOURCE ================= -->
+    <section class="pane" id="pane-source">
+      <h2>Copy Source</h2>
+
+
+      <div class="btn-row btn-grid">
+        <button id="copySourceBtn" class="btn btn-primary">Copy Source</button>
+        <button id="saveSourceBtn" class="btn btn-ghost">Save .txt</button>
+      </div>
+      <div id="sourceStatus" class="status"></div>
+      <hr class="divider" />
+
+    </section>
+
+    <!-- ================= WIDTH ================= -->
+    <section class="pane" id="pane-width">
+      <h2>Set Width</h2>
+
+
+      <label class="field-label" for="widthInput">Max width (px)</label>
+      <input type="text" id="widthInput" inputmode="numeric" value="940" />
+
+      <div class="btn-row btn-grid">
+        <button id="applyWidthBtn" class="btn btn-primary">Apply</button>
+        <button id="resetWidthBtn" class="btn btn-ghost">Reset</button>
+      </div>
+      <div id="widthStatus" class="status"></div>
+    </section>
+
+    <section class="pane" id="pane-links">
+      <h2>Link Shower</h2>
+
+      <label class="opt"><input type="checkbox" id="enabled"> Enable Link Shower</label>
+      <section class="count">
+        <div id="total" class="num">–</div>
+        <div>
+          <div class="big">links on this page</div>
+          <div id="split" class="small">&nbsp;</div>
+        </div>
+      </section>
+
+      <section>
+        <h2>Trigger key</h2>
+        <button id="key" class="keybtn">Shift</button>
+      </section>
+
+      <section>
+        <h2>Trigger mode</h2>
+        <div class="seg" id="mode">
+          <button data-mode="hold">Hold</button>
+          <button data-mode="tap">Tap</button>
+          <button data-mode="always">Always</button>
+        </div>
+      </section>
+
+      <section>
+        <h2>Preview style</h2>
+        <div class="seg" id="pstyle">
+          <button data-ps="auto">Auto</button>
+          <button data-ps="page">Page</button>
+          <button data-ps="card">Card</button>
+        </div>
+      </section>
+
+    </section>
+  </main>
+
+  <script src="popup.js"></script>
+  <script src="link-popup.js"></script>
+</body>
+</html>
