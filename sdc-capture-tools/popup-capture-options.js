@@ -23,7 +23,10 @@ const pageTypes = [
 const otherPages = {id: "others", label: "Others", types: pageTypes};
 
 export const screenshooterSections = {
-  facebook: [profile, storyHighlights, {
+  facebook: [{
+    ...profile,
+    types: [...profile.types, {id: "profileInfo", label: "Profile Information"}]
+  }, storyHighlights, {
     ...otherPages,
     types: [
       ...pageTypes,
