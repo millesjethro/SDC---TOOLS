@@ -6,6 +6,8 @@
 
 [SDC Scraper](./sdc-scraper/) is a Chrome extension that extracts tables and repeated lists from the current page and exports them to Excel or the clipboard. [Download SDC Scraper 1.0.1 ZIP](./SDC-Scraper-1.0.1.zip)
 
+[SDC Bulk Video Downloader](https://github.com/millesjethro/SDC-BULKVIDDL) is a Windows app for queuing and downloading social media videos, with a reusable Excel template for bulk imports. [Download Windows Preview 5 ZIP](https://github.com/millesjethro/SDC-BULKVIDDL/releases/download/windows-preview-5/SDC-BULKVIDDL-Windows-x64.zip)
+
 ## Install an extension
 
 1. Download and extract the ZIP for the version you want.
