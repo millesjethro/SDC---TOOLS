@@ -128,6 +128,7 @@
     margin-top:16px;
     padding-top:16px;
   }
+  .search-years{ margin-top:10px; }
   .post-scan-group{ margin-top:10px; }
   .post-scan{ display:flex; gap:8px; }
   #maxPostsInput{ width:90px; flex:0 0 auto; }
@@ -205,6 +206,7 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline:2px so
   <nav class="tabs" id="tabs">
     <button class="tab active" data-pane="translate">Translate &amp; Delete</button>
     <button class="tab" data-pane="tools">Tools</button>
+    <button class="tab" data-pane="facebook">Search &amp; Photo Tools</button>
     <button class="tab" data-pane="links">Links</button>
   </nav>
 
@@ -277,6 +279,38 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline:2px so
       </section>
     </section>
 
+    <section class="pane" id="pane-facebook" aria-label="Search &amp; Photo Tools">
+      <section class="tool-section" aria-labelledby="search-heading">
+        <h2 id="search-heading">Search</h2>
+        <label class="field-label" for="facebookKeyword">Keyword</label>
+        <input type="text" id="facebookKeyword" />
+        <div class="btn-grid search-years">
+          <div>
+            <label class="field-label" for="facebookStartYear">Start year</label>
+            <input type="text" id="facebookStartYear" inputmode="numeric" maxlength="4" />
+          </div>
+          <div>
+            <label class="field-label" for="facebookEndYear">End year</label>
+            <input type="text" id="facebookEndYear" inputmode="numeric" maxlength="4" />
+          </div>
+        </div>
+        <div class="btn-row btn-grid">
+          <button id="facebookSearchAll" class="btn btn-primary">All</button>
+          <button id="facebookSearchRanged" class="btn btn-ghost">Ranged</button>
+        </div>
+        <div id="facebookSearchStatus" class="status" role="status"></div>
+      </section>
+
+      <section class="tool-section" aria-labelledby="photo-heading">
+        <h2 id="photo-heading">Photo Tools</h2>
+        <div class="btn-row btn-grid">
+          <button id="facebookCopyPhoto" class="btn btn-primary">Copy URL</button>
+          <button id="facebookOpenPhoto" class="btn btn-ghost">Open New Tab</button>
+        </div>
+        <div id="facebookPhotoStatus" class="status" role="status"></div>
+      </section>
+    </section>
+
     <section class="pane" id="pane-links">
       <h2>Link Shower</h2>
 
@@ -316,6 +350,7 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline:2px so
   </main>
 
   <script src="popup.js"></script>
+  <script src="facebook-popup.js"></script>
   <script src="link-popup.js"></script>
 </body>
 </html>

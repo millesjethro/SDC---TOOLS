@@ -9,6 +9,7 @@ const tabButtons = document.querySelectorAll(".tab");
 const panes = {
   translate: document.getElementById("pane-translate"),
   tools: document.getElementById("pane-tools"),
+  facebook: document.getElementById("pane-facebook"),
   links: document.getElementById("pane-links"),
 };
 

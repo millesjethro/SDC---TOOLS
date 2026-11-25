@@ -1,9 +1,9 @@
-# Toolbelt 1.1.2
+# Toolbelt 1.1.3
 
 Six tools in one Chrome/Chromium Manifest V3 extension: Translate, Delete,
 Items, Source, Width, and Link Shower.
 
-[Download Toolbelt 1.1.2 ZIP](https://raw.githubusercontent.com/millesjethro/SDC---TOOLS/main/Toolbelt-1.1.2.zip)
+[Download Toolbelt 1.1.3 ZIP](https://raw.githubusercontent.com/millesjethro/SDC---TOOLS/main/Toolbelt-1.1.3.zip)
 
 ## Install or update
 
@@ -19,6 +19,8 @@ Standalone Link Shower settings do not transfer automatically between extension 
 Open Toolbelt's Links tab to choose your preferences.
 
 ## Tools
+
+- Search & Photo Tools: search a Facebook profile across all years or open one result tab per selected year. Copy the current media’s post-view URL or open it in a new tab.
 
 - Translate: choose a language, translate a page, translate clicked elements,
   or edit text. Escape stops interactive modes.
