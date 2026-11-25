@@ -287,7 +287,7 @@ const sourceStatus = document.getElementById("sourceStatus");
 
 function setSourceStatus(msg, kind) {
   sourceStatus.textContent = msg;
-  sourceStatus.classList.remove("error", "ok");
+  sourceStatus.classList.remove("error", "ok", "warning");
   if (kind) sourceStatus.classList.add(kind);
 }
 
@@ -296,7 +296,12 @@ async function runSource(action, button) {
   setSourceStatus("Working…");
   try {
     const res = await chrome.runtime.sendMessage({ action });
-    setSourceStatus(res?.ok ? (action === "backup-source" ? "Source copied." : "Download started.") : (res?.error || "Could not read source."), res?.ok ? "ok" : "error");
+    if (!res?.ok) {
+      setSourceStatus(res?.error || "Could not read source.", "error");
+      return;
+    }
+    const success = action === "backup-source" ? "Source copied." : "Download started.";
+    setSourceStatus(res.warning ? success + " " + res.warning : success, res.warning ? "warning" : "ok");
   } catch (err) { setSourceStatus(err.message, "error"); }
   finally { button.disabled = false; }
 }

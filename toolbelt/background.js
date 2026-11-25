@@ -540,11 +540,8 @@ async function resetPageWidthOnActiveTab() {
 
 // -------------------------------------------------------------
 // Source tab (formerly "Meta Scraper")
-//
-// Copies or saves the page source exactly as-is. If the source contains
-// "Philippines" or a ".ph" domain/suffix, a warning toast is shown (nothing is
-// removed). ".php" and other longer words don't count — only a standalone
-// ".ph" does. See getRawSource() below.
+// Copy cleans the source before warning about remaining matches.
+// Save keeps the original HTML and checks it for the same matches.
 // -------------------------------------------------------------
 
 async function handleSourceAction(action) {
@@ -554,9 +551,10 @@ async function handleSourceAction(action) {
     const [injection] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: getRawSource });
     const result = injection?.result;
     if (!result || result.error) throw new Error(result?.error || "Could not read source.");
-    const { text: source, philippines, ph } = result;
-    const warning = buildPhWarning(philippines, ph);
-    if (action === "backup-source") {
+    const copying = action === "backup-source";
+    const source = copying ? cleanCopiedSource(result.text) : result.text;
+    const warning = buildPhWarning(source, copying);
+    if (copying) {
       const [copy] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: copyTextToClipboard, args: [source] });
       if (!copy?.result) throw new Error("Clipboard access was denied. Try Save source instead.");
       await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: showNotification, args: ["Source code copied to clipboard"] });
@@ -564,7 +562,7 @@ async function handleSourceAction(action) {
       await saveToFile(source, tab.title);
     }
     showPhWarning(tab.id, warning);
-    return { ok: true };
+    return { ok: true, warning };
   } catch (err) { return { ok: false, error: err.message || "Cannot access this page." }; }
 }
 
@@ -572,22 +570,28 @@ async function getRawSource() {
   try {
     const res = await fetch(window.location.href, { credentials: "include" });
     if (!res.ok) throw new Error("Source request failed: " + res.status);
-    const text = await res.text();
-    // \b after "ph" means ".php", ".photo", etc. do NOT count — only a standalone ".ph".
-    const ph = (text.match(/\.ph\b/gi) || []).length;
-    const philippines = (text.match(/\bphilippines?\b/gi) || []).length;
-    return { text, philippines, ph };
+    return { text: await res.text() };
   } catch (err) {
     console.error("Failed to fetch source:", err);
     return { error: err.message || "Could not fetch page source." };
   }
 }
 
-function buildPhWarning(philippines, ph) {
+function cleanCopiedSource(source) {
+  return source
+    .replace(/(?<![\w-])(com)\.ph(?![\w-])/gi, "$1")
+    .replace(/\bphilippines?\b/gi, "");
+}
+
+function buildPhWarning(source, copying) {
   const found = [];
-  if (philippines) found.push(`"Philippines" ×${philippines}`);
-  if (ph) found.push(`".ph" ×${ph}`);
-  return found.length ? `⚠ Found in copied source: ${found.join(", ")}` : null;
+  const philippines = (source.match(/\bphilippines?\b/gi) || []).length;
+  const ph = (source.match(/\.ph\b/gi) || []).length;
+  if (philippines) found.push('"Philippines" or "Philippine" ×' + philippines);
+  if (ph) found.push('".ph" ×' + ph);
+  if (!found.length) return null;
+  const message = copying ? "Still present after cleanup" : "Found in saved source";
+  return message + ": " + found.join(", ");
 }
 
 function showPhWarning(tabId, warning) {
@@ -596,7 +600,7 @@ function showPhWarning(tabId, warning) {
     target: { tabId },
     func: showNotification,
     args: [warning, true],
-  });
+  }).catch(() => {});
 }
 
 async function copyTextToClipboard(text) {

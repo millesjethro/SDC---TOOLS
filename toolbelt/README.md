@@ -1,9 +1,9 @@
-# Toolbelt 1.1.3
+# Toolbelt 1.1.4
 
 Six tools in one Chrome/Chromium Manifest V3 extension: Translate, Delete,
 Items, Source, Width, and Link Shower.
 
-[Download Toolbelt 1.1.3 ZIP](https://raw.githubusercontent.com/millesjethro/SDC---TOOLS/main/Toolbelt-1.1.3.zip)
+[Download Toolbelt 1.1.4 ZIP](https://raw.githubusercontent.com/millesjethro/SDC---TOOLS/main/Toolbelt-1.1.4.zip)
 
 ## Install or update
 
@@ -30,7 +30,8 @@ Open Toolbelt's Links tab to choose your preferences.
   has a configurable cap. Sites can change their markup and break these collectors.
 - Source: fetch the current URL's HTML and copy or download it as UTF-8 text.
   This is server HTML, which can differ from the live DOM after page scripts run.
-  Existing Philippines/.ph warnings are preserved. Errors appear in the popup.
+  Copy removes “Philippines” and “Philippine” and changes “.com.ph” to “.com”.
+  A warning flags remaining matches after cleanup. Save keeps the original HTML.
 - Width: set a centered maximum width from 200 to 10000 pixels. Reset restores
   the original inline maximum width and side margins, including priorities.
 - Links: Link Shower shows destinations on hover with Hold, Tap, or Always mode;

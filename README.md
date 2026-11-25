@@ -2,7 +2,7 @@
 
 [SDC Capture Tools](./sdc-capture-tools/) is a Chrome extension with platform-specific screenshot capture and Bulk Mode.
 
-[Toolbelt](./toolbelt/) is a Chrome extension for translation, page editing, item counts, width, source, link previews, and Facebook search and photo tools. [Download Toolbelt 1.1.3 ZIP](https://raw.githubusercontent.com/millesjethro/SDC---TOOLS/main/Toolbelt-1.1.3.zip)
+[Toolbelt](./toolbelt/) is a Chrome extension for translation, page editing, item counts, width, source, link previews, and Facebook search and photo tools. [Download Toolbelt 1.1.4 ZIP](https://raw.githubusercontent.com/millesjethro/SDC---TOOLS/main/Toolbelt-1.1.4.zip)
 
 [SDC Scraper](./sdc-scraper/) is a Chrome extension that extracts tables and repeated lists from the current page and exports them to Excel or the clipboard. [Download SDC Scraper 1.0.1 ZIP](./SDC-Scraper-1.0.1.zip)
 
