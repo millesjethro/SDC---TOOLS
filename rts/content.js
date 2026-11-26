@@ -963,7 +963,9 @@
     urlTotal.dataset.smrbScreenshotStatus = '1';
     urlTotal.className = 'smrb-upload-counter';
     urlTotal.textContent = `${urls} URL${urls === 1 ? '' : 's'} added`;
-    totals.append(metadataTotal, urlTotal);
+    const sortOrder = [...totals.children].find(child => /^sort order\s*:/i.test(child.textContent.trim()));
+    totals.insertBefore(metadataTotal, sortOrder ?? null);
+    totals.insertBefore(urlTotal, sortOrder ?? null);
   }
 
   function screenshotRowRules(state) {

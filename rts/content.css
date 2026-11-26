@@ -53,9 +53,9 @@
 
 .smrb-upload-totals {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
 }
 
 .smrb-upload-totals > .smrb-upload-counter {

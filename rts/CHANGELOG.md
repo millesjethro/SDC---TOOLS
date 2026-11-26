@@ -1,6 +1,9 @@
 # RTS changelog
 Versioning: 1.0.1 → 1.0.5, then 1.1.0 → 1.1.5, then 1.2.0 → 1.2.5 ...
 
+## 1.5.6
+- Stacked the upload counters and put the report builder’s sort order below them.
+
 ## 1.5.5
 - Renamed the extension to SDC - RTS.
 - Upload totals use rounded glass counters, and the metadata counter shows how many files are missing when there are fewer metadata files than screenshots.
