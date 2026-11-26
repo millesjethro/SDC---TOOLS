@@ -1,6 +1,11 @@
 # RTS changelog
 Versioning: 1.0.1 → 1.0.5, then 1.1.0 → 1.1.5, then 1.2.0 → 1.2.5 ...
 
+## 1.6.4
+- Updated profile summary, image, and screenshot checks for each match result.
+- Accepts a hyperlink on any of the first three words after “identified”.
+- Restored popup toggles and condensed Possible Callouts to a single row with hover details.
+
 ## 1.6.3
 - Simplified the popup to three report modes and added missing-count dots to the metadata and URL row controls.
 - The “same” rule accepts parentheses after up to three words.

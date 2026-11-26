@@ -104,7 +104,13 @@
   flex: none;
 }
 .smrb-callout-status > .smrb-row-nav { max-width: 100%; }
-.smrb-callout-status .smrb-nav-items { flex-direction: column; align-items: flex-start; }
+.smrb-callout-status .smrb-nav-items { flex-wrap: nowrap; }
+.smrb-callout-status .smrb-callout {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .smrb-row-nav button:focus-visible, .smrb-callout:focus-visible {
   outline: 2px solid #146b99;
   outline-offset: 2px;

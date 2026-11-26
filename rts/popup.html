@@ -4,10 +4,13 @@
   <header>
     <img src="icons/icon48.png" alt="">
     <div><h1>SDC - RTS</h1><span id="ver"></span></div>
+    <label class="sw"><input type="checkbox" id="enabled" aria-label="Enable SDC - RTS" disabled><i></i></label>
   </header>
   <main>
     <h2 id="mode-heading">Report mode</h2>
     <div id="modes" class="modes" role="radiogroup" aria-labelledby="mode-heading"></div>
+    <label class="setting">Google link matching <span class="sw"><input type="checkbox" id="googleMatch" disabled><i></i></span></label>
+    <label class="setting">Hover hints <span class="sw"><input type="checkbox" id="hoverHints" disabled><i></i></span></label>
     <p id="mode-status" role="status"></p>
   </main>
   <script src="modes/bulk_no_rh.js"></script>

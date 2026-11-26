@@ -3,13 +3,33 @@ const list = document.getElementById('modes');
 const status = document.getElementById('mode-status');
 document.getElementById('ver').textContent = 'v' + chrome.runtime.getManifest().version;
 
-chrome.storage.sync.get({ mode: 'bulk_rh' }, ({ mode }) => {
+const toggleDefaults = { enabled: true, googleMatch: true, hoverHints: false };
+chrome.storage.sync.get({ mode: 'bulk_rh', ...toggleDefaults }, values => {
   if (chrome.runtime.lastError) {
     status.textContent = 'Couldn’t load the report mode.';
     return;
   }
 
-  let savedMode = Object.hasOwn(modes, mode) ? mode : 'bulk_rh';
+  for (const key of Object.keys(toggleDefaults)) {
+    const toggle = document.getElementById(key);
+    toggle.checked = values[key];
+    toggle.disabled = false;
+    toggle.addEventListener('change', async () => {
+      const checked = toggle.checked;
+      toggle.disabled = true;
+      try {
+        await chrome.storage.sync.set({ [key]: checked });
+        status.textContent = '';
+      } catch {
+        toggle.checked = !checked;
+        status.textContent = 'Couldn’t save the setting.';
+      } finally {
+        toggle.disabled = false;
+      }
+    });
+  }
+
+  let savedMode = Object.hasOwn(modes, values.mode) ? values.mode : 'bulk_rh';
   const radios = [];
   for (const [key, config] of Object.entries(modes).sort((a, b) => a[1].order - b[1].order)) {
     const label = document.createElement('label');

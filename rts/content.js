@@ -31,7 +31,7 @@
   const SLD = new Set(['co','com','org','net','gov','edu','ac','or','ne','go']);
   const COLORS = ['red', 'orange', 'yellow'];
 
-  let settings = { mode: 'bulk_rh', googleMatch: true, hoverHints: false, sameIgnoredWords: [] };
+  let settings = { enabled: true, mode: 'bulk_rh', googleMatch: true, hoverHints: false, sameIgnoredWords: [] };
   // Report Highlights keeps its timeline checks in every mode.
   const modeCfg = () => (pageType() === 'report_summaries' ? MODES.bulk_rh : MODES[settings.mode]) || MODES.bulk_rh || FALLBACK_MODE;
   // evaluated on every run, so it follows the page address even when the site navigates without a reload
@@ -493,8 +493,7 @@
   // Matches "the identified [word]" and the numbered forms "the 1st identified [word]", "the 2nd identified [word]",
   // "the 3rd ...", "the 4th ...", "the 21st ..." (also spelled out: "the first/second/third ... identified [word]").
   // e.g. "... as seen on the identified [Instagram](url) account."  If [word] is not a hyperlink it gets an orange warning.
-  const ORDINAL = '(?:\\d+(?:st|nd|rd|th)|first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth)';
-  const SOCMED_PHRASE = new RegExp('\\bthe\\s+(?:' + ORDINAL + '\\s+)?identified\\s+([A-Za-z0-9][A-Za-z0-9.+_-]*)', 'gi');
+  const SOCMED_PHRASE = /\bidentified\s+(?!(?:on|as|by|in)\b|business\s+page\b)([\p{L}\p{N}][\p{L}\p{N}._+'’-]*)/giu;
   function rangeChecks(root, find) {
     const parts = [];
     let full = '';
@@ -528,22 +527,23 @@
     });
   }
 
-  // "the identified [word]": the word must be a hyperlink
+  // A hyperlink may cover any of the first three words after "identified".
   const findIdentified = (full, parts) => {
     const items = [];
-    for (const m of full.matchAll(SOCMED_PHRASE)) {
-      const word = m[1].replace(/[.+_-]+$/, '');                      // drop sentence punctuation stuck to the word
-      if (!word) continue;
-      const ws = m.index + m[0].length - m[1].length, we = ws + word.length;
-      let linked = false;
-      parts.forEach(o => {
-        const ns = o.start, ne = ns + o.n.nodeValue.length;
-        if (Math.max(ws, ns) < Math.min(we, ne)) {
-          const a = o.n.parentElement.closest('a[href]');
-          if (a && (a.getAttribute('href') || '').trim()) linked = true;
-        }
+    for (const match of full.matchAll(SOCMED_PHRASE)) {
+      const word = match[1].replace(/[.+_-]+$/, '');
+      const start = match.index + match[0].length - match[1].length;
+      const tail = full.slice(start);
+      const phrase = tail.match(/^[\p{L}\p{N}][\p{L}\p{N}_+'’-]*(?:[^\S\r\n]+(?!(?:and|or|identified)\b)[\p{L}\p{N}][\p{L}\p{N}_+'’-]*){0,2}/iu);
+      const end = start + Math.max(word.length, phrase?.[0].length ?? 0);
+      const linked = parts.some(({ n, start: nodeStart }) => {
+        if (nodeStart >= end || nodeStart + n.nodeValue.length <= start) return false;
+        return !!n.parentElement.closest('a[href]')?.getAttribute('href').trim();
       });
-      if (!linked) items.push({ s: ws, e: we, res: { color: SEV.socmedLink, label: 'Word after "identified" is not hyperlinked', detail: `"${m[0].replace(/\s+/g, ' ')}"` } });
+      if (!linked) items.push({
+        s: start, e: start + word.length,
+        res: { color: SEV.socmedLink, label: 'Word after "identified" is not hyperlinked', detail: tail.slice(0, end - start) },
+      });
     }
     return items;
   };
@@ -875,7 +875,7 @@
   }
 
   // The Google network page: <div id="webformSection"> ... <h2 class="mb-0">Google </h2>
-  const isGoogleNetwork = () => [...document.querySelectorAll('[id="webformSection"] h2.mb-0')].some(h => norm(h.textContent) === 'google');
+  const isGoogleNetwork = () => [...document.querySelectorAll('[id="webformSection"] h2.mb-0')].some(h => /^google(?:\s*\(\s*ba\s*\))?$/i.test(norm(h.textContent)));
 
   // ---- images (#profile_image, #map_view, #street_view) ----
   const NO_IMAGE_TEXT = 'no image uploaded';
@@ -891,12 +891,15 @@
       if (!hasImage(el)) paint(noImageTarget(el), SEV.noImage, 'No image uploaded', name);
     }));
   }
-  // "Possible match found": #profile_image must NOT contain an uploaded image.
-  // No image, "No image uploaded", empty or any other text (the id sits on the whole card) is never marked.
-  function possibleMatchImageCheck() {
-    byId('profile_image', 'Profile image', el => {
-      if (!hasImage(el)) return;
-      paint(el, SEV.possibleImage, 'An image is uploaded on a possible match', 'an image was found');
+  function networkProfileImageCheck(state) {
+    byId('profile_image', 'Profile image', card => {
+      const field = card.querySelector(':scope > div:nth-of-type(2)');
+      const uploaded = field && hasImage(field);
+      if (state === 'match' && !uploaded) {
+        paint(noImageTarget(field || card), SEV.noImage, 'No image uploaded', 'Profile image');
+      } else if (state === 'possible' && uploaded) {
+        paint(field, SEV.possibleImage, 'An image is uploaded on a possible match');
+      }
     });
   }
 
@@ -1054,13 +1057,24 @@
       empty.textContent = 'No other callouts';
       panel.append(empty);
     }
+    const totals = new Map();
+    const seen = new Map();
+    const sectionName = issue => issue.where === 'Profile summary' ? 'Profile - Summary' : issue.where || 'Report';
+    items.forEach(issue => {
+      const section = sectionName(issue);
+      totals.set(section, (totals.get(section) || 0) + 1);
+    });
     const buttons = items.map(issue => {
       const item = document.createElement('button');
       item.type = 'button';
       item.className = `smrb-callout smrb-callout-${issue.color}`;
       const place = issue.row == null ? issue.where : `Row ${issue.row}`;
-      item.textContent = place ? `${place} · ${issue.label}` : issue.label;
-      if (issue.detail) item.title = issue.detail;
+      const section = sectionName(issue);
+      const number = (seen.get(section) || 0) + 1;
+      seen.set(section, number);
+      item.textContent = totals.get(section) > 1 ? `${section} ${number}` : section;
+      item.title = [place, issue.label, issue.detail].filter(Boolean).join(' · ');
+      item.setAttribute('aria-label', `${item.textContent}. ${item.title}`);
       item.addEventListener('click', () => goTo(issue.id, () => {}));
       return item;
     });
@@ -1077,16 +1091,21 @@
     const root = roots.find(el => el.id === 'screenshots') || roots[0];
     const callout = root.querySelector(':scope > div:nth-of-type(1)') || root;
     if (state === 'none' && n) paint(callout, SEV.screenshotRows, 'Screenshots are uploaded but there is no match', `${n} row${n > 1 ? 's' : ''}`);
-    if ((state === 'match' || state === 'possible') && !n) paint(callout, SEV.screenshotRows, 'No screenshot row (at least one is required)');
+    if (state === 'match' && !n) paint(callout, SEV.screenshotRows, 'No screenshot row (at least one is required)');
+    const uploaded = root.querySelector(':scope > div:nth-of-type(2) > div:first-child')?.textContent.match(/([\d,]+)\s+screenshots?\s+uploaded/i);
+    const screenshotCount = uploaded ? Number(uploaded[1].replace(/,/g, '')) : n;
+    if (state === 'possible' && screenshotCount > 1) {
+      paint(callout, SEV.screenshotRows, 'Possible matches allow at most one screenshot', `${screenshotCount} screenshots uploaded`);
+    }
   }
 
   // ---- #match_results state ----
   function matchState() {
-    const texts = [...document.querySelectorAll('[id="match_results"]')].map(e => letters(textOf(e)));
-    if (!texts.length) return null;
-    if (texts.some(t => /nomatch(es)?found/.test(t))) return 'none';
-    if (texts.some(t => /possiblematchfound/.test(t))) return 'possible';
-    if (texts.some(t => /matchfound/.test(t))) return 'match';
+    const field = document.querySelector('#match_results > div:nth-of-type(2)');
+    const result = norm(field?.textContent).replace(/\.$/, '');
+    if (result === 'no match found') return 'none';
+    if (result === 'possible match found') return 'possible';
+    if (result === 'match found') return 'match';
     return null;
   }
 
@@ -1107,17 +1126,12 @@
   }
 
   // ================= Page: /networks/<id> =================
-  function networksChecks() {
-    const state = matchState();                         // 'match' | 'possible' | 'none' | null (unknown)
+  function networksChecks(state, google) {                         // 'match' | 'possible' | 'none' | null (unknown)
     const summaries = scanned('profile_summary');
-    const isDefault = e => /^nomatch(es)?found$/.test(letters(textOf(e)));       // exactly "No match found."
     const noPersonal = [...document.querySelectorAll('[id="profile_summary"]')].some(e => /nopersonalmatchfound/.test(letters(textOf(e))));
 
     // #profile_image
-    if (on('images')) {
-      if (state === 'match') imageBoxChecks([['profile_image', 'Profile image']]);
-      if (state === 'possible') possibleMatchImageCheck();
-    }
+    if (on('images') && (state === 'match' || state === 'possible')) networkProfileImageCheck(state);
 
     // #profile_link (no markings on "No match found")
     if (state !== 'none' && (on('profileLink') || on('urls'))) {
@@ -1132,12 +1146,17 @@
     // #profile_summary
     summaries.forEach(el => {
       ctx = { where: 'Profile summary', row: null };
-      if (isDefault(el)) {                              // exactly "No match found."
-        if ((state === 'match' || state === 'possible') && on('profileSummary')) {
-          bodiesOf(el).forEach(b => wrapText(b, RE.noMatch, () => ({ color: SEV.noMatchSummary, label: 'No match found.' })));
-        }
-        return;
+      const summary = norm(textOf(el));
+      const noMatch = /^no match found\.?$/.test(summary);
+      const expected = {
+        match: [/^(?:identified|match)\b/, 'Profile summary must start with “Identified” or “Match”'],
+        possible: [/^possible\b/, 'Profile summary must start with “Possible”'],
+        none: [/^no match found\.?$/, 'Profile summary must say “No match found”'],
+      }[state];
+      if (expected && on('profileSummary') && !expected[0].test(summary)) {
+        paint(bodiesOf(el)[0], SEV.noMatchSummary, expected[1]);
       }
+      if (noMatch) return;
       if (on('formatting')) bodiesOf(el).forEach(wrapFormatting);   // anything else: the usual checks
       if (on('socmedLinks')) bodiesOf(el).forEach(socmedLinkChecks);
       if (on('sameParen')) bodiesOf(el).forEach(sameParenChecks);
@@ -1148,10 +1167,10 @@
     if (on('mediaLinks')) mediaLinkChecks();
     // image name <-> hyperlinked text: only for the Google network page, and only when switched on in the popup
     if (on('businessPage')) businessPageChecks();                                                                           // header (BA) -> "Identified Business Page"
-    if (on('googleImage') && settings.googleMatch && isGoogleNetwork()) sourceImageChecks();
+    if (google && state !== 'none' && on('googleImage') && settings.googleMatch) sourceImageChecks();
 
     // #screenshots
-    if (modeCfg().skipNetworkScreenshots) return;
+    if (modeCfg().skipNetworkScreenshots || (google && state === 'none')) return;
     screenshotRowRules(state);
     if (state !== 'none' || !urlsForbidden()) screenshotChecks();
   }
@@ -1248,11 +1267,17 @@
     if (observer) observer.disconnect();
     clear();
     issues = []; seq = 0; ctx = { where: '', row: null }; elById = new Map();
+    if (!settings.enabled) {
+      document.getElementById('smrb-badge')?.remove();
+      return;
+    }
     const page = pageType();
+    const state = page === 'networks' ? matchState() : null;
+    const google = page === 'networks' && isGoogleNetwork();
     if (page === 'profile_information') profileInformationChecks();
     else if (page === 'report_summaries') reportSummariesChecks();
-    else if (page === 'networks') networksChecks();
-    if (page === 'report_summaries' || (page === 'networks' && !modeCfg().skipNetworkScreenshots)) {
+    else if (page === 'networks') networksChecks(state, google);
+    if (page === 'report_summaries' || (page === 'networks' && !modeCfg().skipNetworkScreenshots && !(google && state === 'none'))) {
       renderScreenshotStatus();
     }
     if (page !== 'other') renderCalloutStatus();
@@ -1263,13 +1288,13 @@
   function observe() {
     if (!observer) {
       observer = new MutationObserver(records => {
-        if (records.every(({ target }) => target.closest?.('[data-smrb-screenshot-status]'))) return;
+        if (records.every(({ target }) => (target.nodeType === 1 ? target : target.parentElement)?.closest('[data-smrb-screenshot-status], #smrb-badge'))) return;
         clearTimeout(timer);
         timer = setTimeout(run, 250);
       });
     }
     observer.observe(document.body, {
-      childList: true, subtree: true, characterData: true, attributeFilter: ['href', 'data-bs-target'],
+      childList: true, subtree: true, characterData: true, attributeFilter: ['href', 'src', 'style', 'data-bs-target'],
     });
   }
 
@@ -1303,7 +1328,8 @@
   }
 
   // ================= Wiring =================
-  chrome.storage.sync.get({ mode: 'bulk_rh', googleMatch: true, hoverHints: false, sameIgnoredWords: [] }, v => {
+  chrome.storage.sync.get({ enabled: true, mode: 'bulk_rh', googleMatch: true, hoverHints: false, sameIgnoredWords: [] }, v => {
+    settings.enabled = v.enabled;
     settings.hoverHints = v.hoverHints;
     settings.sameIgnoredWords = v.sameIgnoredWords;
     settings.mode = v.mode;
@@ -1312,6 +1338,7 @@
   });
   chrome.storage.onChanged.addListener((ch, area) => {
     if (area !== 'sync') return;
+    if (ch.enabled) settings.enabled = ch.enabled.newValue ?? true;
     if (ch.mode) settings.mode = ch.mode.newValue;
     if (ch.googleMatch) settings.googleMatch = ch.googleMatch.newValue;
     if (ch.hoverHints) settings.hoverHints = ch.hoverHints.newValue;
