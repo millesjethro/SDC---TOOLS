@@ -531,6 +531,12 @@
   const findIdentified = (full, parts) => {
     const items = [];
     for (const match of full.matchAll(SOCMED_PHRASE)) {
+      const keywordEnd = match.index + 'identified'.length;
+      const keywordParts = parts.filter(({ n, start }) => start < keywordEnd && start + n.nodeValue.length > match.index);
+      if (keywordParts.length && keywordParts.every(({ n }) => {
+        const weight = getComputedStyle(n.parentElement).fontWeight;
+        return weight === 'bold' || Number(weight) >= 700;
+      })) continue;
       const word = match[1].replace(/[.+_-]+$/, '');
       const start = match.index + match[0].length - match[1].length;
       const tail = full.slice(start);
