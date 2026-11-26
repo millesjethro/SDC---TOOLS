@@ -18,7 +18,7 @@
   };
   // Modes live in their own files (modes/<name>.js, loaded before this file); each one registers itself in RTS_MODES.
   const MODES = globalThis.RTS_MODES || {};
-  const FALLBACK_MODE = { checks: {}, skipUrlsOnNetworksPage: false, basicScreenshots: false };
+  const FALLBACK_MODE = { checks: {}, skipUrlsOnNetworksPage: false };
 
   const RE = {
     noUrl: /no\s+url/gi,
@@ -31,16 +31,15 @@
   const SLD = new Set(['co','com','org','net','gov','edu','ac','or','ne','go']);
   const COLORS = ['red', 'orange', 'yellow'];
 
-  let settings = { enabled: true, mode: 'default', googleMatch: true, hoverHints: false, sameIgnoredWords: [] };
-  // report_summaries has no modes (and no match results): it always behaves like Default
-  const modeCfg = () => (pageType() === 'report_summaries' ? MODES.default : MODES[settings.mode]) || MODES.default || FALLBACK_MODE;
+  let settings = { mode: 'bulk_rh', googleMatch: true, hoverHints: false, sameIgnoredWords: [] };
+  // Report Highlights keeps its timeline checks in every mode.
+  const modeCfg = () => (pageType() === 'report_summaries' ? MODES.bulk_rh : MODES[settings.mode]) || MODES.bulk_rh || FALLBACK_MODE;
   // evaluated on every run, so it follows the page address even when the site navigates without a reload
   const onNetworksPage = () => modeCfg().skipUrlsOnNetworksPage && /\/networks\//i.test(location.pathname);
   // mode flag noUrlsOnNetworksPage: on /networks/ pages every URL found in the screenshots table is marked red
   const urlsForbidden = () => !!modeCfg().noUrlsOnNetworksPage && /\/networks\//i.test(location.pathname);
   const URL_FUNCTIONS = new Set(['tableUrls', 'noUrl']);
-  const basicScreenshots = () => !!modeCfg().basicScreenshots;
-  const otherFileRule = () => basicScreenshots() || pageType() === 'report_summaries';   // other files: date-named .mp4 only
+  const otherFileRule = () => pageType() === 'report_summaries';   // other files: date-named .mp4 only
   const on = k => modeCfg().checks[k] !== false
     && !(URL_FUNCTIONS.has(k) && onNetworksPage());
   let observer = null, timer = null;
@@ -289,7 +288,6 @@
 
   // ================= Checks: screenshots table =================
   function screenshotChecks() {
-    if (basicScreenshots() && pageType() !== 'networks') return;   // Standard: only the Networks page scans screenshots
     const dups = on('dupUrls') && on('tableUrls');
     if (!on('screenshots') && !(on('urls') && on('tableUrls')) && !on('noUrl') && !dups) return;
     document.querySelectorAll(CFG.TABLE_SEL).forEach(table => {
@@ -551,7 +549,7 @@
   };
   const socmedLinkChecks = root => rangeChecks(root, findIdentified);
 
-  // ================= Checks: "same [word] (...)": the word after "same" must be followed by a (parenthesis) =================
+  // ================= Checks: "same [word] (...)": check for parentheses after up to three words =================
   // Only when "same" STARTS an item: at the start of the text or a sentence, after a comma, or after "and".
   //   "Match found by name, same interest, same sports and same location"  -> interest, sports, location each need a (...)
   //   "same Facebook (facebook)"  -> OK.   "same Facebook"  -> the word "Facebook" is marked red: Missing same (word)
@@ -566,7 +564,7 @@
       if (!word || SAME_SKIP.test(word) || ignored.has(word.toLowerCase())) continue;
       const ws = m.index + m[0].length - m[1].length, we = ws + word.length;
       if (/^profile$/i.test(word) && /^\s+photo\b/i.test(full.slice(we))) continue;               // "same profile photo"
-      if (/^\s*\([^()]*[^\s()][^()]*\)/.test(full.slice(we))) continue;     // "(...)" with open + close parenthesis and some text inside
+      if (/^(?:\s+(?!(?:and|or|same)\b)[\p{L}\p{N}][\p{L}\p{N}\x27’_-]*){0,2}\s*\([^()]*[^\s()][^()]*\)/iu.test(full.slice(we))) continue;     // "(...)" with open + close parenthesis and some text inside
       items.push({ s: ws, e: we, res: { color: SEV.missingSame, label: 'Missing same (word)', detail: `"${m[0].replace(/\s+/g, ' ')}" has no (…) after it` } });
     }
     return items;
@@ -712,13 +710,13 @@
   function sourceImageChecks() {
     const summaries = scanned('profile_summary');
     if (!summaries.length) return;
-    const names = uploadedImageNames();
+    const names = modeCfg().skipNetworkScreenshots ? new Set() : uploadedImageNames();
     const googleResults = names.has('google');                       // one "Google" image holds all the results
     summaries.forEach(s => bodiesOf(s).forEach(b => groupLinks(b).forEach(({ a, primary }) => {
       const word = norm(a.textContent);
       ctx = { where: 'Profile summary', row: null };
       if (word) urlNameCheck(a);                                     // right URL? named after its domain / subdomain / both
-      if (!word || names.has(word)) return;
+      if (!word || modeCfg().skipNetworkScreenshots || names.has(word)) return;
       if (!primary && googleResults) return;                         // listed on the Google Results image
       let closest = '', best = 0;
       names.forEach(n => { if (n.length < 3) return; const sc = similarity(n, word); if (sc > best) { best = sc; closest = n; } });
@@ -930,7 +928,7 @@
     let urls = 0;
     const missingMetadata = [];
     const missingUrls = [];
-    const expectsUrls = on('noUrl') && (pageType() !== 'networks' || matchState() !== 'none' || basicScreenshots());
+    const expectsUrls = on('noUrl');
     screenshotRows([root]).forEach(row => {
       const cell = metadataCell(row);
       const hasMetadata = cell && RE.metadata.test(cell.textContent);
@@ -995,7 +993,11 @@
       });
       return button;
     });
-    line.append(counter, browseItems(buttons, `rows missing ${label}`));
+    const count = document.createElement('span');
+    count.className = 'smrb-missing-count';
+    count.textContent = String(rows.length);
+    count.setAttribute('aria-label', `${rows.length} rows missing ${label}`);
+    line.append(counter, count, browseItems(buttons, `rows missing ${label}`));
     return line;
   }
 
@@ -1068,7 +1070,7 @@
   }
 
   function screenshotRowRules(state) {
-    if (!on('screenshotRows') || basicScreenshots()) return;   // Standard: nothing is required, nothing is forbidden
+    if (!on('screenshotRows')) return;
     const roots = screenshotRoots(), n = screenshotRows().length;
     if (!roots.length) return;
     ctx = { where: 'Screenshots', row: null };
@@ -1149,13 +1151,9 @@
     if (on('googleImage') && settings.googleMatch && isGoogleNetwork()) sourceImageChecks();
 
     // #screenshots
-    if (state === 'none') {                                            // no markings, only "uploaded although no match"
-      screenshotRowRules(state);
-      if (basicScreenshots()) screenshotChecks();                      // Standard: whatever was uploaded is scanned in any state
-      return;
-    }
+    if (modeCfg().skipNetworkScreenshots) return;
     screenshotRowRules(state);
-    screenshotChecks();
+    if (state !== 'none' || !urlsForbidden()) screenshotChecks();
   }
 
   function byId(id, where, fn) {
@@ -1193,7 +1191,6 @@
   // showing the total number of issues, coloured by the highest severity found (red > orange > yellow, green = none).
   function renderBadge() {
     let b = document.getElementById('smrb-badge');
-    if (!settings.enabled) { if (b) b.remove(); return; }
     if (!b) {
       b = document.createElement('div');
       b.id = 'smrb-badge';
@@ -1251,14 +1248,14 @@
     if (observer) observer.disconnect();
     clear();
     issues = []; seq = 0; ctx = { where: '', row: null }; elById = new Map();
-    if (settings.enabled) {
-      const page = pageType();
-      if (page === 'profile_information') profileInformationChecks();
-      else if (page === 'report_summaries') reportSummariesChecks();
-      else if (page === 'networks') networksChecks();
-      if (page === 'networks' || page === 'report_summaries') renderScreenshotStatus();
-      if (page !== 'other') renderCalloutStatus();
+    const page = pageType();
+    if (page === 'profile_information') profileInformationChecks();
+    else if (page === 'report_summaries') reportSummariesChecks();
+    else if (page === 'networks') networksChecks();
+    if (page === 'report_summaries' || (page === 'networks' && !modeCfg().skipNetworkScreenshots)) {
+      renderScreenshotStatus();
     }
+    if (page !== 'other') renderCalloutStatus();
     renderBadge();
     observe();
   }
@@ -1306,31 +1303,19 @@
   }
 
   // ================= Wiring =================
-  chrome.storage.sync.get({ enabled: true, mode: 'default', googleMatch: true, hoverHints: false, sameIgnoredWords: [] }, v => {
+  chrome.storage.sync.get({ mode: 'bulk_rh', googleMatch: true, hoverHints: false, sameIgnoredWords: [] }, v => {
     settings.hoverHints = v.hoverHints;
     settings.sameIgnoredWords = v.sameIgnoredWords;
-    settings.enabled = v.enabled;
     settings.mode = v.mode;
     settings.googleMatch = v.googleMatch;
     run();
   });
   chrome.storage.onChanged.addListener((ch, area) => {
     if (area !== 'sync') return;
-    if (ch.enabled) settings.enabled = ch.enabled.newValue;
     if (ch.mode) settings.mode = ch.mode.newValue;
     if (ch.googleMatch) settings.googleMatch = ch.googleMatch.newValue;
     if (ch.hoverHints) settings.hoverHints = ch.hoverHints.newValue;
     if (ch.sameIgnoredWords) settings.sameIgnoredWords = ch.sameIgnoredWords.newValue ?? [];
     run();
-  });
-  chrome.runtime.onMessage.addListener((msg, _s, send) => {
-    if (!msg) return;
-    if (msg.type === 'counts') {
-      const shotRows = screenshotRows();
-      send({ enabled: settings.enabled, page: pageType(), google: pageType() === 'networks' && isGoogleNetwork(), counts: counts(),
-             scan: { rows: shotRows.length, files: shotRows.reduce((n, r) => n + otherFileLinks(r).length, 0) },
-             issues: issues.map(({ id, color, label, detail, where, row }) => ({ id, color, label, detail, where, row })) });
-    }
-    if (msg.type === 'goto') { goTo(+msg.id, send); return true; } // async response
   });
 })();

@@ -134,3 +134,17 @@
 .smrb-callout-red { background: #ffdfd9; border-color: #dca49a; }
 .smrb-callout-orange { background: #ffead6; border-color: #d1ae89; }
 .smrb-callout-yellow { background: #fbf2d4; border-color: #c9b97e; }
+
+.smrb-missing-count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 24px;
+  min-height: 24px;
+  padding-inline: 5px;
+  border-radius: 999px;
+  background: #FFCABF;
+  color: #642c24;
+  font-size: .8rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}

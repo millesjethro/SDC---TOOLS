@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "SDC - RTS",
-  "version": "1.6.2",
+  "version": "1.6.3",
   "description": "SDC - RTS \u2013 outlines report issues (missing URLs, metadata, bad file names, double spaces) on Social Media Report Builder.",
   "permissions": [
     "storage"
@@ -21,7 +21,6 @@
         "https://next.socialmediareportbuilder.com/*"
       ],
       "js": [
-        "modes/default.js",
         "modes/bulk_no_rh.js",
         "modes/bulk_rh.js",
         "modes/standard.js",

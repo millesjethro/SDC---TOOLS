@@ -1,6 +1,10 @@
 # RTS changelog
 Versioning: 1.0.1 → 1.0.5, then 1.1.0 → 1.1.5, then 1.2.0 → 1.2.5 ...
 
+## 1.6.3
+- Simplified the popup to three report modes and added missing-count dots to the metadata and URL row controls.
+- The “same” rule accepts parentheses after up to three words.
+
 ## 1.6.2
 - Browse three missing rows or possible callouts at a time. Arrow clicks browse the list, and clicking an item jumps to it.
 
