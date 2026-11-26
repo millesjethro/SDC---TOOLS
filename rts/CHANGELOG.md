@@ -1,6 +1,10 @@
 # RTS changelog
 Versioning: 1.0.1 → 1.0.5, then 1.1.0 → 1.1.5, then 1.2.0 → 1.2.5 ...
 
+## 1.6.0
+- Added a report panel for possible callouts. Metadata and URL findings are omitted from the panel.
+- Added row navigation beside the missing metadata and URL counters. Missing metadata no longer inherits a finding outline.
+
 ## 1.5.6
 - Stacked the upload counters and put the report builder’s sort order below them.
 

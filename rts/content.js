@@ -326,7 +326,7 @@
 
         if (on('screenshots')) {
           const meta = metadataCell(row);
-          if (meta && !RE.metadata.test(meta.textContent)) paint(meta.querySelector(':scope > div:nth-of-type(2)') || meta, SEV.noMetadata, 'metadata.txt is missing');   // only that part is marked
+          if (meta && !RE.metadata.test(meta.textContent)) record(meta, SEV.noMetadata, 'metadata.txt is missing');
 
           row.querySelectorAll('[data-bs-target="#screenshotViewer"]').forEach(a => {
             const spans = [...a.querySelectorAll('span')];
@@ -928,9 +928,14 @@
     totals.classList.add('smrb-upload-totals');
     let metadata = 0;
     let urls = 0;
+    const missingMetadata = [];
+    const missingUrls = [];
+    const expectsUrls = on('noUrl') && (pageType() !== 'networks' || matchState() !== 'none' || basicScreenshots());
     screenshotRows([root]).forEach(row => {
       const cell = metadataCell(row);
-      if (cell && RE.metadata.test(cell.textContent)) metadata++;
+      const hasMetadata = cell && RE.metadata.test(cell.textContent);
+      if (hasMetadata) metadata++;
+      const urlsBeforeRow = urls;
 
       const files = new Set(otherFileLinks(row).filter(link => {
         const extension = fileLinkName(link).split('.').pop().toLowerCase();
@@ -948,6 +953,13 @@
           if (textUrlKey(match)) urls++;
         }
       }
+      const previews = [...row.querySelectorAll('[data-bs-target="#screenshotViewer"]')];
+      const hasScreenshot = previews.some(preview => CFG.FILE_OK.test(preview.textContent.trim()));
+      const videoOnly = !hasScreenshot && (previews.some(preview => /\.mp4$/i.test(preview.textContent.trim()))
+        || [...files].some(link => /\.mp4$/i.test(fileLinkName(link))));
+      if (videoOnly) return;
+      if (!hasMetadata) missingMetadata.push(row);
+      if (expectsUrls && urls === urlsBeforeRow) missingUrls.push(row);
     });
 
     const metadataTotal = document.createElement('div');
@@ -964,8 +976,79 @@
     urlTotal.className = 'smrb-upload-counter';
     urlTotal.textContent = `${urls} URL${urls === 1 ? '' : 's'} added`;
     const sortOrder = [...totals.children].find(child => /^sort order\s*:/i.test(child.textContent.trim()));
-    totals.insertBefore(metadataTotal, sortOrder ?? null);
-    totals.insertBefore(urlTotal, sortOrder ?? null);
+    totals.insertBefore(screenshotCounterRow(metadataTotal, missingMetadata, 'metadata'), sortOrder ?? null);
+    totals.insertBefore(screenshotCounterRow(urlTotal, missingUrls, 'URL'), sortOrder ?? null);
+  }
+
+  function screenshotCounterRow(counter, rows, label) {
+    if (!rows.length) return counter;
+    delete counter.dataset.smrbScreenshotStatus;
+    const line = document.createElement('div');
+    line.dataset.smrbScreenshotStatus = '1';
+    line.className = 'smrb-counter-line';
+    const nav = document.createElement('div');
+    nav.className = 'smrb-row-nav';
+    nav.setAttribute('role', 'group');
+    nav.setAttribute('aria-label', `Rows missing ${label}`);
+    let index = 0;
+    const button = (text, name) => {
+      const el = document.createElement('button');
+      el.type = 'button';
+      el.textContent = text;
+      if (name) el.setAttribute('aria-label', name);
+      return el;
+    };
+    const prev = button('‹', `Previous row missing ${label}`);
+    const current = button('');
+    const next = button('›', `Next row missing ${label}`);
+    function update() {
+      current.textContent = `Row ${rowNum(rows[index])}`;
+      prev.disabled = next.disabled = rows.length === 1;
+    }
+    function jump(offset) {
+      index = (index + offset + rows.length) % rows.length;
+      update();
+      const row = rows[index];
+      if (!row.isConnected) return;
+      row.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }
+    prev.addEventListener('click', () => jump(-1));
+    next.addEventListener('click', () => jump(1));
+    current.addEventListener('click', () => jump(0));
+    update();
+    nav.append(prev, current, next);
+    line.append(counter, nav);
+    return line;
+  }
+
+  function renderCalloutStatus() {
+    const screenshots = screenshotRoots()[0];
+    const anchor = screenshots || scanned('webformSection')[0];
+    if (!anchor) return;
+    const panel = document.createElement('section');
+    panel.dataset.smrbScreenshotStatus = '1';
+    panel.className = 'smrb-callout-status';
+    const title = document.createElement('h3');
+    title.textContent = 'STATUS (POSSIBLE CALLOUT)';
+    panel.append(title);
+    const items = issues.filter(issue => !/\b(?:metadata|URLs?)\b/i.test(issue.label));
+    if (!items.length) {
+      const empty = document.createElement('p');
+      empty.textContent = 'No other callouts';
+      panel.append(empty);
+    }
+    for (const issue of items) {
+      const item = document.createElement('button');
+      item.type = 'button';
+      item.className = `smrb-callout smrb-callout-${issue.color}`;
+      const place = issue.row == null ? issue.where : `Row ${issue.row}`;
+      item.textContent = place ? `${place} · ${issue.label}` : issue.label;
+      if (issue.detail) item.title = issue.detail;
+      item.addEventListener('click', () => goTo(issue.id, () => {}));
+      panel.append(item);
+    }
+    if (screenshots) screenshots.before(panel);
+    else anchor.prepend(panel);
   }
 
   function screenshotRowRules(state) {
@@ -1158,6 +1241,7 @@
       else if (page === 'report_summaries') reportSummariesChecks();
       else if (page === 'networks') networksChecks();
       if (page === 'networks' || page === 'report_summaries') renderScreenshotStatus();
+      if (page !== 'other') renderCalloutStatus();
     }
     renderBadge();
     observe();
@@ -1165,7 +1249,11 @@
 
   function observe() {
     if (!observer) {
-      observer = new MutationObserver(() => { clearTimeout(timer); timer = setTimeout(run, 250); });
+      observer = new MutationObserver(records => {
+        if (records.every(({ target }) => target.closest?.('[data-smrb-screenshot-status]'))) return;
+        clearTimeout(timer);
+        timer = setTimeout(run, 250);
+      });
     }
     observer.observe(document.body, {
       childList: true, subtree: true, characterData: true, attributeFilter: ['href', 'data-bs-target'],
