@@ -986,39 +986,51 @@
     const line = document.createElement('div');
     line.dataset.smrbScreenshotStatus = '1';
     line.className = 'smrb-counter-line';
+    const buttons = rows.map(row => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = `Row ${rowNum(row)}`;
+      button.addEventListener('click', () => {
+        if (row.isConnected) row.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      });
+      return button;
+    });
+    line.append(counter, browseItems(buttons, `rows missing ${label}`));
+    return line;
+  }
+
+  function browseItems(buttons, label) {
     const nav = document.createElement('div');
     nav.className = 'smrb-row-nav';
     nav.setAttribute('role', 'group');
-    nav.setAttribute('aria-label', `Rows missing ${label}`);
-    let index = 0;
-    const button = (text, name) => {
-      const el = document.createElement('button');
-      el.type = 'button';
-      el.textContent = text;
-      if (name) el.setAttribute('aria-label', name);
-      return el;
-    };
-    const prev = button('‹', `Previous row missing ${label}`);
-    const current = button('');
-    const next = button('›', `Next row missing ${label}`);
-    function update() {
-      current.textContent = `Row ${rowNum(rows[index])}`;
-      prev.disabled = next.disabled = rows.length === 1;
+    nav.setAttribute('aria-label', label);
+    const items = document.createElement('div');
+    items.className = 'smrb-nav-items';
+    nav.append(items);
+    const visibleCount = 3;
+    let start = 0;
+    function showItems() {
+      items.replaceChildren(...buttons.slice(start, start + visibleCount));
     }
-    function jump(offset) {
-      index = (index + offset + rows.length) % rows.length;
-      update();
-      const row = rows[index];
-      if (!row.isConnected) return;
-      row.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    if (buttons.length > visibleCount) {
+      const lastStart = buttons.length - visibleCount;
+      const arrow = (text, direction, step) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'smrb-nav-arrow';
+        button.textContent = text;
+        button.setAttribute('aria-label', `${direction} ${label}`);
+        button.addEventListener('click', () => {
+          start = (start + step + lastStart + 1) % (lastStart + 1);
+          showItems();
+        });
+        return button;
+      };
+      nav.prepend(arrow('‹', 'Previous', -1));
+      nav.append(arrow('›', 'Next', 1));
     }
-    prev.addEventListener('click', () => jump(-1));
-    next.addEventListener('click', () => jump(1));
-    current.addEventListener('click', () => jump(0));
-    update();
-    nav.append(prev, current, next);
-    line.append(counter, nav);
-    return line;
+    showItems();
+    return nav;
   }
 
   function renderCalloutStatus() {
@@ -1040,7 +1052,7 @@
       empty.textContent = 'No other callouts';
       panel.append(empty);
     }
-    for (const issue of items) {
+    const buttons = items.map(issue => {
       const item = document.createElement('button');
       item.type = 'button';
       item.className = `smrb-callout smrb-callout-${issue.color}`;
@@ -1048,8 +1060,9 @@
       item.textContent = place ? `${place} · ${issue.label}` : issue.label;
       if (issue.detail) item.title = issue.detail;
       item.addEventListener('click', () => goTo(issue.id, () => {}));
-      panel.append(item);
-    }
+      return item;
+    });
+    if (buttons.length) panel.append(browseItems(buttons, 'possible callouts'));
     if (before) before.before(panel);
     else anchor.prepend(panel);
   }

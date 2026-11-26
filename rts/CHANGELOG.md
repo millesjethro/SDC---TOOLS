@@ -1,6 +1,9 @@
 # RTS changelog
 Versioning: 1.0.1 → 1.0.5, then 1.1.0 → 1.1.5, then 1.2.0 → 1.2.5 ...
 
+## 1.6.2
+- Browse three missing rows or possible callouts at a time. Arrow clicks browse the list, and clicking an item jumps to it.
+
 ## 1.6.1
 - Placed the RTS status panel in its own section immediately above Callout Summary.
 
