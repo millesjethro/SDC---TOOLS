@@ -29,7 +29,6 @@
   };
   const FILE_EXT = new Set(['txt','jpg','jpeg','png','gif','webp','pdf','html','htm','css','js','json','csv','doc','docx','xls','xlsx','zip','mp4','svg']);
   const SLD = new Set(['co','com','org','net','gov','edu','ac','or','ne','go']);
-  const COLORS = ['red', 'orange', 'yellow'];
 
   let settings = { enabled: true, mode: 'bulk_rh', googleMatch: true, hoverHints: false, sameIgnoredWords: [] };
   // Report Highlights keeps its timeline checks in every mode.
@@ -43,24 +42,6 @@
   const on = k => modeCfg().checks[k] !== false
     && !(URL_FUNCTIONS.has(k) && onNetworksPage());
   let observer = null, timer = null;
-  const COLLAPSE_KEY = 'smrb-collapsed';
-  let badgeCollapsed = false;
-  try { badgeCollapsed = localStorage.getItem(COLLAPSE_KEY) === '1'; } catch (e) {}
-  const POS_KEY = 'smrb-pos';                      // { side: 'left' | 'right', top: px }  (null = default bottom-right)
-  let badgePos = null;
-  try { badgePos = JSON.parse(localStorage.getItem(POS_KEY) || 'null'); } catch (e) {}
-  if (!badgePos || (badgePos.side !== 'left' && badgePos.side !== 'right') || !isFinite(badgePos.top)) badgePos = null;
-  function savePos() { try { localStorage.setItem(POS_KEY, JSON.stringify(badgePos)); } catch (e) {} }
-  function applyPos(b) {
-    if (!badgePos) { b.style.top = b.style.left = b.style.right = b.style.bottom = ''; return; }
-    const edge = badgeCollapsed ? '6px' : '14px';
-    const maxTop = Math.max(4, window.innerHeight - b.offsetHeight - 4);
-    b.style.top = Math.min(Math.max(4, badgePos.top), maxTop) + 'px';
-    b.style.bottom = 'auto';
-    b.style.left = badgePos.side === 'left' ? edge : 'auto';
-    b.style.right = badgePos.side === 'right' ? edge : 'auto';
-  }
-  function setCollapsed(v) { badgeCollapsed = v; try { localStorage.setItem(COLLAPSE_KEY, v ? '1' : '0'); } catch (e) {} renderBadge(); }
   let issues = [], seq = 0, ctx = { where: '', row: null };
   let elById = new Map();
 
@@ -112,6 +93,8 @@
   const bodiesOf = el => { const b = [...el.querySelectorAll('.rich-text')]; return b.length ? b : [el]; };
   const textOf = el => bodiesOf(el).map(b => b.textContent).join(' ');
   const NO_MATCH_TEXT = /nomatch(es)?found/;
+  const NO_MATCH_LINE = /^no match found(?:\s*\.)?$/;
+  const PUBLIC_MEDIA = /\bidentified\s+on\s+(?:a\s+)?public\s+[^\s,;!?]+\b\s+[\p{L}\p{N}]/iu;
   const norm = t => (t || '').replace(/\s+/g, ' ').trim().toLowerCase();
   const letters = t => (t || '').toLowerCase().replace(/[^a-z]/g, '');
 
@@ -716,13 +699,13 @@
   function sourceImageChecks() {
     const summaries = scanned('profile_summary');
     if (!summaries.length) return;
-    const names = modeCfg().skipNetworkScreenshots ? new Set() : uploadedImageNames();
+    const names = modeCfg().reportType === 'nonbulk' ? new Set() : uploadedImageNames();
     const googleResults = names.has('google');                       // one "Google" image holds all the results
     summaries.forEach(s => bodiesOf(s).forEach(b => groupLinks(b).forEach(({ a, primary }) => {
       const word = norm(a.textContent);
       ctx = { where: 'Profile summary', row: null };
       if (word) urlNameCheck(a);                                     // right URL? named after its domain / subdomain / both
-      if (!word || modeCfg().skipNetworkScreenshots || names.has(word)) return;
+      if (!word || modeCfg().reportType === 'nonbulk' || names.has(word)) return;
       if (!primary && googleResults) return;                         // listed on the Google Results image
       let closest = '', best = 0;
       names.forEach(n => { if (n.length < 3) return; const sc = similarity(n, word); if (sc > best) { best = sc; closest = n; } });
@@ -1055,7 +1038,7 @@
     panel.dataset.smrbScreenshotStatus = '1';
     panel.className = 'smrb-callout-status';
     const title = document.createElement('h3');
-    title.textContent = 'STATUS (POSSIBLE CALLOUT)';
+    title.textContent = 'STATUS (POSSIBLE CALLOUT) - ALL ARE JUST POSSIBLE';
     panel.append(title);
     const items = issues.filter(issue => !/\b(?:metadata|URLs?)\b/i.test(issue.label));
     if (!items.length) {
@@ -1089,29 +1072,47 @@
     else anchor.prepend(panel);
   }
 
-  function screenshotRowRules(state) {
+  function networkScreenshotPolicy(state, google, summaries) {
+    const type = modeCfg().reportType;
+    const publicMedia = summaries.some(summary => PUBLIC_MEDIA.test(textOf(summary)));
+    if (google && state === 'none') return null;
+    if (type === 'nonbulk') return { min: 0, max: 0, details: false };
+    if (type === 'std' && !google && publicMedia) return null;
+    if (state === 'none') return { min: 0, max: 0, details: !urlsForbidden() };
+    return {
+      min: state === 'match' || (type === 'bulk' && publicMedia) ? 1 : 0,
+      max: google ? (state === 'possible' ? 1 : Infinity) : (type === 'std' ? 1 : Infinity),
+      details: true,
+    };
+  }
+
+  function screenshotRowRules(state, policy) {
     if (!on('screenshotRows')) return;
-    const roots = screenshotRoots(), n = screenshotRows().length;
+    const roots = screenshotRoots();
     if (!roots.length) return;
-    ctx = { where: 'Screenshots', row: null };
     const root = roots.find(el => el.id === 'screenshots') || roots[0];
-    const callout = root.querySelector(':scope > div:nth-of-type(1)') || root;
-    if (state === 'none' && n) paint(callout, SEV.screenshotRows, 'Screenshots are uploaded but there is no match', `${n} row${n > 1 ? 's' : ''}`);
-    if (state === 'match' && !n) paint(callout, SEV.screenshotRows, 'No screenshot row (at least one is required)');
     const uploaded = root.querySelector(':scope > div:nth-of-type(2) > div:first-child')?.textContent.match(/([\d,]+)\s+screenshots?\s+uploaded/i);
-    const screenshotCount = uploaded ? Number(uploaded[1].replace(/,/g, '')) : n;
-    if (state === 'possible' && screenshotCount > 1) {
-      paint(callout, SEV.screenshotRows, 'Possible matches allow at most one screenshot', `${screenshotCount} screenshots uploaded`);
+    const count = uploaded ? Number(uploaded[1].replace(/,/g, '')) : screenshotRows(roots).length;
+    ctx = { where: 'Screenshots', row: null };
+    const callout = root.querySelector(':scope > div:nth-of-type(1)') || root;
+    const detail = `${count} screenshot${count === 1 ? '' : 's'} uploaded`;
+    if (count < policy.min) {
+      paint(callout, SEV.screenshotRows, 'No screenshot uploaded (at least one is required)');
+    } else if (count > policy.max) {
+      const label = policy.max === 0
+        ? (state === 'none' ? 'Screenshots are uploaded but there is no match' : 'STD (Non-Bulk) allows no screenshots on Networks')
+        : 'At most one screenshot is allowed on this network';
+      paint(callout, SEV.screenshotRows, label, detail);
     }
   }
 
   // ---- #match_results state ----
   function matchState() {
     const field = document.querySelector('#match_results > div:nth-of-type(2)');
-    const result = norm(field?.textContent).replace(/\.$/, '');
-    if (result === 'no match found') return 'none';
-    if (result === 'possible match found') return 'possible';
-    if (result === 'match found') return 'match';
+    const result = norm(field?.textContent);
+    if (NO_MATCH_LINE.test(result)) return 'none';
+    if (/^possible match found(?:\s*\.)?$/.test(result)) return 'possible';
+    if (/^match found(?:\s*\.)?$/.test(result)) return 'match';
     return null;
   }
 
@@ -1132,8 +1133,7 @@
   }
 
   // ================= Page: /networks/<id> =================
-  function networksChecks(state, google) {                         // 'match' | 'possible' | 'none' | null (unknown)
-    const summaries = scanned('profile_summary');
+  function networksChecks(state, google, summaries, policy) {
     const noPersonal = [...document.querySelectorAll('[id="profile_summary"]')].some(e => /nopersonalmatchfound/.test(letters(textOf(e))));
 
     // #profile_image
@@ -1152,12 +1152,12 @@
     // #profile_summary
     summaries.forEach(el => {
       ctx = { where: 'Profile summary', row: null };
-      const summary = norm(textOf(el));
-      const noMatch = /^no match found\.?$/.test(summary);
+      const summary = norm(textOf(el).replace(/[\u200B-\u200D\uFEFF]/g, ''));
+      const noMatch = NO_MATCH_LINE.test(summary);
       const expected = {
         match: [/^(?:identified|match)\b/, 'Profile summary must start with “Identified” or “Match”'],
         possible: [/^possible\b/, 'Profile summary must start with “Possible”'],
-        none: [/^no match found\.?$/, 'Profile summary must say “No match found”'],
+        none: [NO_MATCH_LINE, 'Profile summary must say “No match found.”'],
       }[state];
       if (expected && on('profileSummary') && !expected[0].test(summary)) {
         paint(bodiesOf(el)[0], SEV.noMatchSummary, expected[1]);
@@ -1176,9 +1176,9 @@
     if (google && state !== 'none' && on('googleImage') && settings.googleMatch) sourceImageChecks();
 
     // #screenshots
-    if (modeCfg().skipNetworkScreenshots || (google && state === 'none')) return;
-    screenshotRowRules(state);
-    if (state !== 'none' || !urlsForbidden()) screenshotChecks();
+    if (!policy) return;
+    screenshotRowRules(state, policy);
+    if (policy.details) screenshotChecks();
   }
 
   function byId(id, where, fn) {
@@ -1206,95 +1206,30 @@
     tipMap.clear();
   }
 
-  function counts() {
-    const c = {};
-    COLORS.forEach(k => { c[k] = issues.filter(i => i.color === k).length; });
-    return c;
-  }
-
-  // Floating badge: full pill (RTS + red/orange/yellow counts) or, when collapsed, a small circle on the right edge
-  // showing the total number of issues, coloured by the highest severity found (red > orange > yellow, green = none).
-  function renderBadge() {
-    let b = document.getElementById('smrb-badge');
-    if (!b) {
-      b = document.createElement('div');
-      b.id = 'smrb-badge';
-      let drag = null, moved = false, justDragged = false;
-      b.addEventListener('pointerdown', e => {
-        if (e.button !== 0) return;
-        const r = b.getBoundingClientRect();
-        drag = { dx: e.clientX - r.left, dy: e.clientY - r.top, x0: e.clientX, y0: e.clientY };
-        moved = false;
-        try { b.setPointerCapture(e.pointerId); } catch (err) {}
-      });
-      b.addEventListener('pointermove', e => {
-        if (!drag) return;
-        if (!moved && Math.hypot(e.clientX - drag.x0, e.clientY - drag.y0) < 5) return;   // small movement = a click
-        moved = true;
-        b.classList.add('dragging');
-        const w = b.offsetWidth, h = b.offsetHeight;
-        b.style.left = Math.min(Math.max(0, e.clientX - drag.dx), window.innerWidth - w) + 'px';
-        b.style.top = Math.min(Math.max(0, e.clientY - drag.dy), window.innerHeight - h) + 'px';
-        b.style.right = b.style.bottom = 'auto';
-      });
-      const endDrag = e => {
-        if (!drag) return;
-        try { b.releasePointerCapture(e.pointerId); } catch (err) {}
-        drag = null;
-        if (!moved) return;
-        b.classList.remove('dragging');
-        const r = b.getBoundingClientRect();
-        badgePos = { side: (r.left + r.width / 2) < window.innerWidth / 2 ? 'left' : 'right', top: Math.round(r.top) };   // snap to the nearest side
-        savePos(); applyPos(b);
-        justDragged = true; setTimeout(() => { justDragged = false; }, 60);
-      };
-      b.addEventListener('pointerup', endDrag);
-      b.addEventListener('pointercancel', endDrag);
-      b.addEventListener('click', () => { if (justDragged) return; setCollapsed(!badgeCollapsed); });
-      window.addEventListener('resize', () => applyPos(b));
-      document.body.appendChild(b);
-    }
-    const c = counts();
-    if (badgeCollapsed) {
-      const total = COLORS.reduce((n, k) => n + c[k], 0);
-      const top = COLORS.find(k => c[k] > 0) || 'green';
-      b.className = 'collapsed';
-      b.title = `RTS – ${total} issue${total === 1 ? '' : 's'} (click to expand, drag to move)`;
-      b.innerHTML = `<span class="dot ${top}">${total}</span>`;
-    } else {
-      b.className = '';
-      b.title = 'RTS – click to hide, drag to move to the left or right side';
-      b.innerHTML = '<strong>RTS</strong>' + COLORS.map(k => `<span class="b ${k}">${c[k]}</span>`).join('') + '<span class="x">\u203A</span>';
-    }
-    applyPos(b);
-  }
-
   function run() {
     if (observer) observer.disconnect();
     clear();
     issues = []; seq = 0; ctx = { where: '', row: null }; elById = new Map();
-    if (!settings.enabled) {
-      document.getElementById('smrb-badge')?.remove();
-      return;
-    }
+    if (!settings.enabled) return;
     const page = pageType();
     const state = page === 'networks' ? matchState() : null;
     const google = page === 'networks' && isGoogleNetwork();
+    const summaries = page === 'networks' ? scanned('profile_summary') : [];
+    const policy = page === 'networks' ? networkScreenshotPolicy(state, google, summaries) : null;
     if (page === 'profile_information') profileInformationChecks();
     else if (page === 'report_summaries') reportSummariesChecks();
-    else if (page === 'networks') networksChecks(state, google);
-    if (page === 'report_summaries' || (page === 'networks' && !modeCfg().skipNetworkScreenshots && !(google && state === 'none'))) {
+    else if (page === 'networks') networksChecks(state, google, summaries, policy);
+    if (page === 'report_summaries' || policy?.details) {
       renderScreenshotStatus();
     }
     if (page !== 'other') renderCalloutStatus();
-    renderBadge();
     observe();
   }
 
   function observe() {
     if (!observer) {
       observer = new MutationObserver(records => {
-        if (records.every(({ target }) => (target.nodeType === 1 ? target : target.parentElement)?.closest('[data-smrb-screenshot-status], #smrb-badge'))) return;
+        if (records.every(({ target }) => (target.nodeType === 1 ? target : target.parentElement)?.closest('[data-smrb-screenshot-status]'))) return;
         clearTimeout(timer);
         timer = setTimeout(run, 250);
       });

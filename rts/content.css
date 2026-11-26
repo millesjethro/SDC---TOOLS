@@ -11,35 +11,6 @@
 .smrb-pre   { white-space: pre !important; }            /* makes double spaces visible */
 .smrb-blank { display: inline-block; min-width: 110px; min-height: 1.3em; vertical-align: middle; }
 
-#smrb-badge {
-  position: fixed; right: 14px; bottom: 14px; z-index: 2147483647;
-  display: flex; align-items: center; gap: 6px; padding: 6px 10px;
-  background: #1f2937; color: #fff; border-radius: 999px; cursor: pointer;
-  font: 600 12px/1 system-ui, sans-serif; box-shadow: 0 4px 14px rgba(0,0,0,.35); opacity: .92;
-}
-#smrb-badge { touch-action: none; user-select: none; -webkit-user-select: none; }
-#smrb-badge:hover { opacity: 1; }
-#smrb-badge.dragging { cursor: grabbing; opacity: 1; }
-#smrb-badge strong { letter-spacing: .5px; margin-right: 2px; }
-#smrb-badge .b { min-width: 20px; padding: 3px 6px; border-radius: 999px; text-align: center; color: #000; }
-#smrb-badge .b.red { background: #ff4d4f; color: #fff; }
-#smrb-badge .b.orange { background: #fa8c16; }
-#smrb-badge .b.yellow { background: #ffe600; }
-
-#smrb-badge .x { margin-left: 2px; padding-left: 4px; font-size: 16px; line-height: 1; opacity: .7; }
-/* collapsed: only a small circle docked to the right edge, number = total issues, colour = highest severity */
-#smrb-badge.collapsed { padding: 0; gap: 0; background: transparent; box-shadow: none; right: 6px; opacity: 1; }
-#smrb-badge .dot {
-  display: flex; align-items: center; justify-content: center; box-sizing: border-box;
-  min-width: 26px; height: 26px; padding: 0 6px; border-radius: 999px;
-  font: 700 12px/1 system-ui, sans-serif; color: #000; border: 2px solid #fff;
-  box-shadow: 0 2px 8px rgba(0,0,0,.45);
-}
-#smrb-badge .dot.red { background: #ff4d4f; color: #fff; }
-#smrb-badge .dot.orange { background: #fa8c16; }
-#smrb-badge .dot.yellow { background: #ffe600; }
-#smrb-badge .dot.green { background: #52c41a; color: #fff; }
-
 @keyframes smrb-flash {
   0%,100% { box-shadow: 0 0 0 0 rgba(37,99,235,0); }
   50%     { box-shadow: 0 0 0 10px rgba(37,99,235,.65); }

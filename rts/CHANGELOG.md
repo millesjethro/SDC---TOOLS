@@ -1,6 +1,11 @@
 # RTS changelog
 Versioning: 1.0.1 → 1.0.5, then 1.1.0 → 1.1.5, then 1.2.0 → 1.2.5 ...
 
+## 1.7.0
+- Added the STD, BULK, and STD (Non-Bulk) screenshot rules.
+- Accepts “No match found.” with or without its final period.
+- Removed the floating badge and clarified the Possible Callout heading.
+
 ## 1.6.5
 - Skip the hyperlink check when “Identified” is bold.
 
