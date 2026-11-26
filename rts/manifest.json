@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "RTS",
-  "version": "1.5.4",
-  "description": "RTS \u2013 highlights report issues (missing URLs, metadata, bad file names, double spaces) on Social Media Report Builder.",
+  "name": "SDC - RTS",
+  "version": "1.5.5",
+  "description": "SDC - RTS \u2013 outlines report issues (missing URLs, metadata, bad file names, double spaces) on Social Media Report Builder.",
   "permissions": [
     "storage"
   ],
@@ -34,7 +34,7 @@
     }
   ],
   "action": {
-    "default_title": "RTS",
+    "default_title": "SDC - RTS",
     "default_popup": "popup.html",
     "default_icon": {
       "16": "icons/icon16.png",

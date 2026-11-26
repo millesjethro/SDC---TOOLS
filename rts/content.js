@@ -918,6 +918,14 @@
     const totals = document.querySelector('#screenshots > div:nth-of-type(2) > div:first-child');
     if (!totals || totals.closest(CFG.EXCLUDE)) return;
     const root = totals.closest('#screenshots');
+    let uploadedScreenshots = null;
+    for (const counter of totals.children) {
+      const match = counter.textContent.trim().match(/^([\d,]+)\s+(screenshots?|videos?)\s+uploaded$/i);
+      if (!match) continue;
+      counter.classList.add('smrb-upload-counter');
+      if (/^screenshot/i.test(match[2])) uploadedScreenshots = Number(match[1].replace(/,/g, ''));
+    }
+    totals.classList.add('smrb-upload-totals');
     let metadata = 0;
     let urls = 0;
     screenshotRows([root]).forEach(row => {
@@ -942,16 +950,20 @@
       }
     });
 
-    const status = document.createElement('div');
-    status.dataset.smrbScreenshotStatus = '1';
     const metadataTotal = document.createElement('div');
-    metadataTotal.className = 'mt-2';
+    metadataTotal.dataset.smrbScreenshotStatus = '1';
+    metadataTotal.className = 'smrb-upload-counter';
     metadataTotal.textContent = `${metadata} metadata file${metadata === 1 ? '' : 's'} uploaded`;
+    if (uploadedScreenshots !== null && metadata < uploadedScreenshots) {
+      const missing = uploadedScreenshots - metadata;
+      metadataTotal.classList.add('smrb-metadata-shortfall');
+      metadataTotal.textContent += ` · ${missing} missing`;
+    }
     const urlTotal = document.createElement('div');
-    urlTotal.className = 'mt-2';
+    urlTotal.dataset.smrbScreenshotStatus = '1';
+    urlTotal.className = 'smrb-upload-counter';
     urlTotal.textContent = `${urls} URL${urls === 1 ? '' : 's'} added`;
-    status.append(metadataTotal, urlTotal);
-    totals.append(status);
+    totals.append(metadataTotal, urlTotal);
   }
 
   function screenshotRowRules(state) {
@@ -1052,6 +1064,9 @@
   // ================= Run / clear =================
   function clear() {
     document.querySelectorAll('[data-smrb-screenshot-status]').forEach(el => el.remove());
+    document.querySelectorAll('.smrb-upload-totals, .smrb-upload-counter').forEach(el => {
+      el.classList.remove('smrb-upload-totals', 'smrb-upload-counter');
+    });
     document.querySelectorAll('span[data-smrb-wrap]').forEach(s => {
       const p = s.parentNode;
       s.replaceWith(document.createTextNode(s.textContent));

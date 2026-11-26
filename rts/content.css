@@ -49,3 +49,30 @@
   outline: 3px solid #2563eb !important; outline-offset: 2px;
   position: relative; z-index: 5;
 }
+
+
+.smrb-upload-totals {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.smrb-upload-totals > .smrb-upload-counter {
+  --rts-counter-surface: rgba(241, 248, 246, .88);
+  margin: 0 !important;
+  padding: 5px 11px;
+  border: 1px solid rgba(53, 102, 86, .25);
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, .52), transparent 65%),
+              var(--rts-counter-surface);
+  color: #203a32;
+  font-variant-numeric: tabular-nums;
+  backdrop-filter: blur(8px);
+}
+
+.smrb-upload-totals > .smrb-metadata-shortfall {
+  border-color: #c98275;
+  background: #FFCABF;
+  color: #642c24;
+}
