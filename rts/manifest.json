@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "RTS",
-  "version": "1.5.3",
+  "version": "1.5.4",
   "description": "RTS \u2013 highlights report issues (missing URLs, metadata, bad file names, double spaces) on Social Media Report Builder.",
   "permissions": [
     "storage"

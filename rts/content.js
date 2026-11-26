@@ -282,6 +282,11 @@
     }, URL_SKIP);
   }
 
+  function metadataCell(row) {
+    const cells = [...row.children];
+    return cells.find(cell => /metadata/i.test(cell.textContent)) || cells[2];
+  }
+
   // ================= Checks: screenshots table =================
   function screenshotChecks() {
     if (basicScreenshots() && pageType() !== 'networks') return;   // Standard: only the Networks page scans screenshots
@@ -320,8 +325,7 @@
         if (on('noUrl')) wrapText(row, RE.noUrl, () => ({ color: SEV.noUrl, label: 'No Url' }));
 
         if (on('screenshots')) {
-          const cells = [...row.children];
-          const meta = cells.find(c => /metadata/i.test(c.textContent)) || cells[2];
+          const meta = metadataCell(row);
           if (meta && !RE.metadata.test(meta.textContent)) paint(meta.querySelector(':scope > div:nth-of-type(2)') || meta, SEV.noMetadata, 'metadata.txt is missing');   // only that part is marked
 
           row.querySelectorAll('[data-bs-target="#screenshotViewer"]').forEach(a => {
@@ -900,15 +904,56 @@
 
   // ---- screenshots container / rows ----
   const screenshotRoots = () => [...new Set(document.querySelectorAll('[id="screenshots"], div[screenshots]'))].filter(e => !e.closest(CFG.EXCLUDE));
-  function screenshotRows() {
+  function screenshotRows(roots = screenshotRoots()) {
     const rows = [];
-    screenshotRoots().forEach(root => root.querySelectorAll('tbody > tr').forEach(r => {
+    roots.forEach(root => root.querySelectorAll('tbody > tr').forEach(r => {
+      if (r.closest(CFG.EXCLUDE)) return;
       const text = r.textContent.replace(/\s+/g, ' ').trim();
       const real = r.querySelector('a,img') || (r.children.length > 1 && !/^no\b/i.test(text));   // not an empty-state row
       if (real) rows.push(r);
     }));
     return rows;
   }
+  function renderScreenshotStatus() {
+    const totals = document.querySelector('#screenshots > div:nth-of-type(2) > div:first-child');
+    if (!totals || totals.closest(CFG.EXCLUDE)) return;
+    const root = totals.closest('#screenshots');
+    let metadata = 0;
+    let urls = 0;
+    screenshotRows([root]).forEach(row => {
+      const cell = metadataCell(row);
+      if (cell && RE.metadata.test(cell.textContent)) metadata++;
+
+      const files = new Set(otherFileLinks(row).filter(link => {
+        const extension = fileLinkName(link).split('.').pop().toLowerCase();
+        return FILE_EXT.has(extension);
+      }));
+      row.querySelectorAll('a[href]').forEach(link => {
+        if (!link.closest('button,[data-bs-target]') && !files.has(link) && hrefKey(link)) urls++;
+      });
+
+      const walker = document.createTreeWalker(row, NodeFilter.SHOW_TEXT);
+      while (walker.nextNode()) {
+        const node = walker.currentNode;
+        if (!node.parentElement || node.parentElement.closest(URL_SKIP + ',script,style')) continue;
+        for (const match of node.nodeValue.matchAll(RE.url)) {
+          if (textUrlKey(match)) urls++;
+        }
+      }
+    });
+
+    const status = document.createElement('div');
+    status.dataset.smrbScreenshotStatus = '1';
+    const metadataTotal = document.createElement('div');
+    metadataTotal.className = 'mt-2';
+    metadataTotal.textContent = `${metadata} metadata file${metadata === 1 ? '' : 's'} uploaded`;
+    const urlTotal = document.createElement('div');
+    urlTotal.className = 'mt-2';
+    urlTotal.textContent = `${urls} URL${urls === 1 ? '' : 's'} added`;
+    status.append(metadataTotal, urlTotal);
+    totals.append(status);
+  }
+
   function screenshotRowRules(state) {
     if (!on('screenshotRows') || basicScreenshots()) return;   // Standard: nothing is required, nothing is forbidden
     const roots = screenshotRoots(), n = screenshotRows().length;
@@ -1006,6 +1051,7 @@
 
   // ================= Run / clear =================
   function clear() {
+    document.querySelectorAll('[data-smrb-screenshot-status]').forEach(el => el.remove());
     document.querySelectorAll('span[data-smrb-wrap]').forEach(s => {
       const p = s.parentNode;
       s.replaceWith(document.createTextNode(s.textContent));
@@ -1094,6 +1140,7 @@
       if (page === 'profile_information') profileInformationChecks();
       else if (page === 'report_summaries') reportSummariesChecks();
       else if (page === 'networks') networksChecks();
+      if (page === 'networks' || page === 'report_summaries') renderScreenshotStatus();
     }
     renderBadge();
     observe();
@@ -1103,7 +1150,9 @@
     if (!observer) {
       observer = new MutationObserver(() => { clearTimeout(timer); timer = setTimeout(run, 250); });
     }
-    observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+    observer.observe(document.body, {
+      childList: true, subtree: true, characterData: true, attributeFilter: ['href', 'data-bs-target'],
+    });
   }
 
   // ================= Scroll to a finding =================

@@ -1,6 +1,9 @@
 # RTS changelog
 Versioning: 1.0.1 → 1.0.5, then 1.1.0 → 1.1.5, then 1.2.0 → 1.2.5 ...
 
+## 1.5.4
+- The Screenshots section now shows metadata and URL totals below the upload counts.
+
 ## 1.5.3
 - The (BA) check now looks for “Identified Business Page” in the profile summary.
 - Findings use severity-colored outlines. Screenshot section callouts outline the first direct div inside #screenshots.
