@@ -34,14 +34,15 @@
   // Report Highlights keeps its timeline checks in every mode.
   const modeCfg = () => (pageType() === 'report_summaries' || settings.relatedHighlightsOnTimeline
     ? MODES.bulk_rh : MODES[settings.mode]) || MODES.bulk_rh || FALLBACK_MODE;
-  // evaluated on every run, so it follows the page address even when the site navigates without a reload
-  const onNetworksPage = () => modeCfg().skipUrlsOnNetworksPage && /\/networks\//i.test(location.pathname);
+  const skipNetworkScreenshotUrls = () => pageType() === 'networks'
+    && (modeCfg().skipUrlsOnNetworksPage
+      || (modeCfg().reportType === 'bulk' && !settings.relatedHighlightsOnTimeline));
   // mode flag noUrlsOnNetworksPage: on /networks/ pages every URL found in the screenshots table is marked red
   const urlsForbidden = () => !!modeCfg().noUrlsOnNetworksPage && /\/networks\//i.test(location.pathname);
   const URL_FUNCTIONS = new Set(['tableUrls', 'noUrl']);
   const otherFileRule = () => pageType() === 'report_summaries';   // other files: date-named .mp4 only
   const on = k => modeCfg().checks[k] !== false
-    && !(URL_FUNCTIONS.has(k) && onNetworksPage());
+    && !(URL_FUNCTIONS.has(k) && skipNetworkScreenshotUrls());
   let observer = null, timer = null;
   let issues = [], seq = 0, ctx = { where: '', row: null };
   let elById = new Map();

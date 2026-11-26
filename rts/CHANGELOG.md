@@ -2,6 +2,7 @@
 Versioning: 1.0.1 → 1.0.5, then 1.1.0 → 1.1.5, then 1.2.0 → 1.2.5 ...
 
 ## 1.7.0
+- BULK checks screenshot URLs on Networks only when Related Highlights on Timeline is enabled.
 - Labeled STD “Landing Page Only” and added a Related Highlights on Timeline toggle for the STD and Non-Bulk screenshot rules.
 - Skips no-match summaries that point to the search query or queries below.
 - Recognizes semantic and semibold “Identified” formatting when skipping the hyperlink check.

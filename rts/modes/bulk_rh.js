@@ -1,5 +1,5 @@
 // RTS mode: Standard / Bulk (With RH on Timeline)
-// Check screenshot URLs and metadata on both timelines.
+// On Networks, screenshot URL checks require Related Highlights on Timeline.
 (globalThis.RTS_MODES = globalThis.RTS_MODES || {}).bulk_rh = {
   order: 2,
   label: 'BULK',
