@@ -30,9 +30,10 @@
   const FILE_EXT = new Set(['txt','jpg','jpeg','png','gif','webp','pdf','html','htm','css','js','json','csv','doc','docx','xls','xlsx','zip','mp4','svg']);
   const SLD = new Set(['co','com','org','net','gov','edu','ac','or','ne','go']);
 
-  let settings = { enabled: true, mode: 'bulk_rh', googleMatch: true, hoverHints: false, sameIgnoredWords: [] };
+  let settings = { enabled: true, mode: 'bulk_rh', googleMatch: true, relatedHighlightsOnTimeline: false, sameIgnoredWords: [] };
   // Report Highlights keeps its timeline checks in every mode.
-  const modeCfg = () => (pageType() === 'report_summaries' ? MODES.bulk_rh : MODES[settings.mode]) || MODES.bulk_rh || FALLBACK_MODE;
+  const modeCfg = () => (pageType() === 'report_summaries' || settings.relatedHighlightsOnTimeline
+    ? MODES.bulk_rh : MODES[settings.mode]) || MODES.bulk_rh || FALLBACK_MODE;
   // evaluated on every run, so it follows the page address even when the site navigates without a reload
   const onNetworksPage = () => modeCfg().skipUrlsOnNetworksPage && /\/networks\//i.test(location.pathname);
   // mode flag noUrlsOnNetworksPage: on /networks/ pages every URL found in the screenshots table is marked red
@@ -46,37 +47,7 @@
   let elById = new Map();
 
   // ================= Helpers =================
-  // ---- hover hints (popup switch, off by default): a short plain message in the tooltip of every marked item ----
-  const HINTS = [
-    [/^No image uploaded/i, 'Missing Image'], [/^An image is uploaded/i, 'Image not allowed (Possible match)'],
-    [/^Name has no link/i, 'Missing Link'], [/^Link has no name/i, 'Missing Name'],
-    [/^No profile link/i, 'Missing Profile Link'], [/^Profile link is hyperlinked/i, 'Profile link must not be hyperlinked in the summary'],
-    [/^No match found\./i, 'Summary still says "No match found."'],
-    [/^No screenshot row/i, 'Missing Screenshot'], [/^Screenshots are uploaded but/i, 'Screenshot not allowed (No match)'],
-    [/^No Url/i, 'Missing URL'], [/^metadata\.txt is missing/i, 'Missing Metadata'],
-    [/^File name is blank/i, 'Missing File Name'], [/^File name is not/i, 'Wrong File Name (.jpg / .jpeg / .png)'],
-    [/^Other file must be named/i, 'Wrong File Name (date + .mp4)'],
-    [/^URL has no subdomain/i, 'Missing Subdomain (www.)'], [/^Same URL appears more than once/i, 'Duplicate URL'],
-    [/^URL is not allowed here/i, 'URL not allowed (No RH on Timeline)'],
-    [/^Same URL used by more than one numbered/i, 'Duplicate URL (numbered links)'],
-    [/^Same image name/i, 'Duplicate Image Name'], [/^Link text does not match/i, 'Wrong URL (name does not match domain / subdomain)'],
-    [/^No named image/i, 'Missing Image (named after the link)'], [/^Word after "identified"/i, 'Missing Hyperlink'],
-    [/^Header says \(BA\)/i, 'Missing "Identified Business Page"'], [/^Tag this as business/i, 'Tag this as business (BA)'],
-    [/^Double space/i, 'Double Space'], [/^Double punctuation/i, 'Double Punctuation'],
-    [/^Space after opening/i, 'Extra Space after bracket'], [/^Space before closing/i, 'Extra Space before bracket'],
-    [/^Unfilled placeholder/i, 'Unfilled {Placeholder}'], [/^Missing same/i, 'Missing same (word)'], [/^Orange text/i, 'Orange text'],
-  ];
-  const hintFor = label => { const h = HINTS.find(([re]) => re.test(label || '')); return h ? h[1] : (label || ''); };
-  const tipMap = new Map();
-  function addTip(el, label) {
-    const tips = tipMap.get(el) || new Set();
-    tips.add(hintFor(label)); tipMap.set(el, tips);
-    if (!el.hasAttribute('data-smrb-tip') && el.hasAttribute('title')) el.dataset.smrbT0 = el.getAttribute('title');
-    el.dataset.smrbTip = '1';
-    el.setAttribute('title', [...tips].join(' · '));
-  }
   function record(el, color, label, detail) {
-    if (settings.hoverHints) addTip(el, label);
     const id = ++seq;
     if (!el.dataset.smrbI) el.dataset.smrbI = id;
     elById.set(id, el);
@@ -94,6 +65,7 @@
   const textOf = el => bodiesOf(el).map(b => b.textContent).join(' ');
   const NO_MATCH_TEXT = /nomatch(es)?found/;
   const NO_MATCH_LINE = /^no match found(?:\s*\.)?$/;
+  const NO_MATCH_SEARCH_QUERY = /\bno match found\s*\.\s*please see search quer(?:y|ies) below\b/;
   const PUBLIC_MEDIA = /\bidentified\s+on\s+(?:a\s+)?public\s+[^\s,;!?]+\b\s+[\p{L}\p{N}]/iu;
   const norm = t => (t || '').replace(/\s+/g, ' ').trim().toLowerCase();
   const letters = t => (t || '').toLowerCase().replace(/[^a-z]/g, '');
@@ -518,7 +490,7 @@
       const keywordParts = parts.filter(({ n, start }) => start < keywordEnd && start + n.nodeValue.length > match.index);
       if (keywordParts.length && keywordParts.every(({ n }) => {
         const weight = getComputedStyle(n.parentElement).fontWeight;
-        return weight === 'bold' || Number(weight) >= 700;
+        return !!n.parentElement.closest('strong, b') || weight === 'bold' || Number(weight) >= 600;
       })) continue;
       const word = match[1].replace(/[.+_-]+$/, '');
       const start = match.index + match[0].length - match[1].length;
@@ -727,11 +699,14 @@
     }
     return false;
   }
-  function placeholderChecks() {
+  function summaryCheckRoots(skippedSummaries) {
     const roots = new Set(document.querySelectorAll('.rich-text'));
     ['profile_summary', 'report_highlights'].forEach(id => scanned(id).forEach(e => bodiesOf(e).forEach(b => roots.add(b))));
-    roots.forEach(root => {
-      if (root.closest(CFG.EXCLUDE)) return;
+    return [...roots].filter(root => !root.closest(CFG.EXCLUDE)
+      && !skippedSummaries?.has(root.closest('[id="profile_summary"]')));
+  }
+  function placeholderChecks(skippedSummaries) {
+    summaryCheckRoots(skippedSummaries).forEach(root => {
       let where = 'Page';
       for (let p = root; p; p = p.parentElement) if (p.id && SECTION_NAMES[p.id]) { where = SECTION_NAMES[p.id]; break; }
       ctx = { where, row: null };
@@ -767,11 +742,8 @@
     }
     return false;
   }
-  function orangeTextChecks() {
-    const roots = new Set(document.querySelectorAll('.rich-text'));
-    ['profile_summary', 'report_highlights'].forEach(id => scanned(id).forEach(e => bodiesOf(e).forEach(b => roots.add(b))));
-    roots.forEach(root => {
-      if (root.closest(CFG.EXCLUDE)) return;
+  function orangeTextChecks(skippedSummaries) {
+    summaryCheckRoots(skippedSummaries).forEach(root => {
       let where = 'Page';
       for (let p = root; p; p = p.parentElement) if (p.id && SECTION_NAMES[p.id]) { where = SECTION_NAMES[p.id]; break; }
       ctx = { where, row: null };
@@ -806,11 +778,8 @@
     return names;
   }
   const NUMBERED_LINK = /^([A-Za-z][A-Za-z'-]*)\s*(\d{1,2})$/;
-  function mediaLinkChecks() {
-    const roots = new Set(document.querySelectorAll('.rich-text'));
-    ['profile_summary', 'report_highlights'].forEach(id => scanned(id).forEach(e => bodiesOf(e).forEach(b => roots.add(b))));
-    roots.forEach(root => {
-      if (root.closest(CFG.EXCLUDE)) return;
+  function mediaLinkChecks(skippedSummaries) {
+    summaryCheckRoots(skippedSummaries).forEach(root => {
       const names = listedNames(root);
       if (!names.size) return;                                        // no "Identified on public [Socmed] <plurals>" sentence: no check
       const groups = new Map();
@@ -1076,6 +1045,10 @@
     const type = modeCfg().reportType;
     const publicMedia = summaries.some(summary => PUBLIC_MEDIA.test(textOf(summary)));
     if (google && state === 'none') return null;
+    const selectedType = MODES[settings.mode]?.reportType;
+    if (settings.relatedHighlightsOnTimeline && (selectedType === 'std' || selectedType === 'nonbulk')) {
+      return { min: 0, max: google && state === 'possible' ? 1 : Infinity, details: true };
+    }
     if (type === 'nonbulk') return { min: 0, max: 0, details: false };
     if (type === 'std' && !google && publicMedia) return null;
     if (state === 'none') return { min: 0, max: 0, details: !urlsForbidden() };
@@ -1150,9 +1123,14 @@
     }
 
     // #profile_summary
+    const skippedSummaries = new Set();
     summaries.forEach(el => {
       ctx = { where: 'Profile summary', row: null };
       const summary = norm(textOf(el).replace(/[\u200B-\u200D\uFEFF]/g, ''));
+      if (state === 'none' && NO_MATCH_SEARCH_QUERY.test(summary)) {
+        skippedSummaries.add(el);
+        return;
+      }
       const noMatch = NO_MATCH_LINE.test(summary);
       const expected = {
         match: [/^(?:identified|match)\b/, 'Profile summary must start with “Identified” or “Match”'],
@@ -1168,9 +1146,9 @@
       if (on('sameParen')) bodiesOf(el).forEach(sameParenChecks);
     });
     if (state !== 'none' && on('linkInSummary')) linkInSummaryChecks();
-    if (on('placeholders')) placeholderChecks();
-    if (on('orangeText')) orangeTextChecks();
-    if (on('mediaLinks')) mediaLinkChecks();
+    if (on('placeholders')) placeholderChecks(skippedSummaries);
+    if (on('orangeText')) orangeTextChecks(skippedSummaries);
+    if (on('mediaLinks')) mediaLinkChecks(skippedSummaries);
     // image name <-> hyperlinked text: only for the Google network page, and only when switched on in the popup
     if (on('businessPage')) businessPageChecks();                                                                           // header (BA) -> "Identified Business Page"
     if (google && state !== 'none' && on('googleImage') && settings.googleMatch) sourceImageChecks();
@@ -1203,7 +1181,6 @@
       if (e.dataset.smrbT0 !== undefined) e.setAttribute('title', e.dataset.smrbT0); else e.removeAttribute('title');
       delete e.dataset.smrbTip; delete e.dataset.smrbT0;
     });
-    tipMap.clear();
   }
 
   function run() {
@@ -1269,9 +1246,9 @@
   }
 
   // ================= Wiring =================
-  chrome.storage.sync.get({ enabled: true, mode: 'bulk_rh', googleMatch: true, hoverHints: false, sameIgnoredWords: [] }, v => {
+  chrome.storage.sync.get({ enabled: true, mode: 'bulk_rh', googleMatch: true, relatedHighlightsOnTimeline: false, sameIgnoredWords: [] }, v => {
     settings.enabled = v.enabled;
-    settings.hoverHints = v.hoverHints;
+    settings.relatedHighlightsOnTimeline = v.relatedHighlightsOnTimeline;
     settings.sameIgnoredWords = v.sameIgnoredWords;
     settings.mode = v.mode;
     settings.googleMatch = v.googleMatch;
@@ -1282,7 +1259,7 @@
     if (ch.enabled) settings.enabled = ch.enabled.newValue ?? true;
     if (ch.mode) settings.mode = ch.mode.newValue;
     if (ch.googleMatch) settings.googleMatch = ch.googleMatch.newValue;
-    if (ch.hoverHints) settings.hoverHints = ch.hoverHints.newValue;
+    if (ch.relatedHighlightsOnTimeline) settings.relatedHighlightsOnTimeline = ch.relatedHighlightsOnTimeline.newValue ?? false;
     if (ch.sameIgnoredWords) settings.sameIgnoredWords = ch.sameIgnoredWords.newValue ?? [];
     run();
   });

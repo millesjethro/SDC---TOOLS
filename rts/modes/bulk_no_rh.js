@@ -4,7 +4,7 @@
 (globalThis.RTS_MODES = globalThis.RTS_MODES || {}).bulk_no_rh = {
   order: 1,
   label: 'STD',
-  description: 'Standard · up to one screenshot per network',
+  description: 'Landing Page Only',
   reportType: 'std',
   checks: {},
   skipUrlsOnNetworksPage: true,

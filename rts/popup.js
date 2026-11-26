@@ -3,7 +3,7 @@ const list = document.getElementById('modes');
 const status = document.getElementById('mode-status');
 document.getElementById('ver').textContent = 'v' + chrome.runtime.getManifest().version;
 
-const toggleDefaults = { enabled: true, googleMatch: true, hoverHints: false };
+const toggleDefaults = { enabled: true, googleMatch: true, relatedHighlightsOnTimeline: false };
 chrome.storage.sync.get({ mode: 'bulk_rh', ...toggleDefaults }, values => {
   if (chrome.runtime.lastError) {
     status.textContent = 'Couldn’t load the report mode.';

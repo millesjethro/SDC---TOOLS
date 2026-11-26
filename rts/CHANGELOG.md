@@ -2,6 +2,9 @@
 Versioning: 1.0.1 → 1.0.5, then 1.1.0 → 1.1.5, then 1.2.0 → 1.2.5 ...
 
 ## 1.7.0
+- Labeled STD “Landing Page Only” and added a Related Highlights on Timeline toggle for the STD and Non-Bulk screenshot rules.
+- Skips no-match summaries that point to the search query or queries below.
+- Recognizes semantic and semibold “Identified” formatting when skipping the hyperlink check.
 - Added the STD, BULK, and STD (Non-Bulk) screenshot rules.
 - Accepts “No match found.” with or without its final period.
 - Removed the floating badge and clarified the Possible Callout heading.
