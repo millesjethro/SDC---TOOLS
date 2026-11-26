@@ -1022,8 +1022,11 @@
   }
 
   function renderCalloutStatus() {
-    const screenshots = screenshotRoots()[0];
-    const anchor = screenshots || scanned('webformSection')[0];
+    const summary = [...document.querySelectorAll('section h3')]
+      .find(heading => norm(heading.textContent) === 'callout summary' && !heading.closest(CFG.EXCLUDE))
+      ?.closest('section');
+    const before = summary || screenshotRoots()[0];
+    const anchor = before || scanned('webformSection')[0];
     if (!anchor) return;
     const panel = document.createElement('section');
     panel.dataset.smrbScreenshotStatus = '1';
@@ -1047,7 +1050,7 @@
       item.addEventListener('click', () => goTo(issue.id, () => {}));
       panel.append(item);
     }
-    if (screenshots) screenshots.before(panel);
+    if (before) before.before(panel);
     else anchor.prepend(panel);
   }
 
