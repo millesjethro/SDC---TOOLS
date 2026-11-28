@@ -47,11 +47,11 @@
   let elById = new Map();
 
   // ================= Helpers =================
-  function record(el, color, label, detail) {
+  function record(el, color, label, detail, flash = true) {
     const id = ++seq;
     if (!el.dataset.smrbI) el.dataset.smrbI = id;
     elById.set(id, el);
-    issues.push({ id, color, label, detail: detail || '', where: ctx.where, row: ctx.row });
+    issues.push({ id, color, label, detail: detail || '', flash, where: ctx.where, row: ctx.row });
   }
   function paint(el, color, label, detail) {
     if (el.closest(CFG.EXCLUDE)) return;
@@ -483,11 +483,12 @@
   }
 
   // A hyperlink may cover any of the first three words after "identified".
-  const findIdentified = (full, parts) => {
+  const findIdentified = (full, parts, progressive = false) => {
     const items = [];
     for (const match of full.matchAll(SOCMED_PHRASE)) {
       if (match[0].startsWith('I')) continue;
       const keywordEnd = match.index + 'identified'.length;
+      if (progressive && /^\s+[\p{L}\p{N}][\p{L}\p{N}’'_-]*\s+page\s*:/iu.test(full.slice(keywordEnd))) continue;
       const keywordParts = parts.filter(({ n, start }) => start < keywordEnd && start + n.nodeValue.length > match.index);
       if (keywordParts.length && keywordParts.every(({ n }) => {
         const weight = getComputedStyle(n.parentElement).fontWeight;
@@ -509,7 +510,11 @@
     }
     return items;
   };
-  const socmedLinkChecks = root => rangeChecks(root, findIdentified);
+  function socmedLinkChecks(root) {
+    const progressive = [...document.querySelectorAll('#clientSop > div')]
+      .some(field => norm(field.textContent).includes('progressive insurance'));
+    rangeChecks(root, (full, parts) => findIdentified(full, parts, progressive));
+  }
 
   // ================= Checks: "same [word] (...)": check for parentheses after up to three words =================
   // Only when "same" STARTS an item: at the start of the text or a sentence, after a comma, or after "and".
@@ -611,8 +616,8 @@
     )).size;
     if (links === images) return;
     ctx = { where: 'Profile summary', row: null };
-    paint(bodiesOf(summaries[0])[0], SEV.googleName, 'Miss match numbers of screenshots',
-      `${links} stand-alone link${links === 1 ? '' : 's'} · ${images} uploaded image row${images === 1 ? '' : 's'}`);
+    record(bodiesOf(summaries[0])[0], SEV.googleName, 'Miss match numbers of screenshots',
+      `${links} stand-alone link${links === 1 ? '' : 's'} · ${images} uploaded image row${images === 1 ? '' : 's'}`, false);
   }
   function trailingLineCheck(body) {
     if (!body.textContent.trim()) return;
@@ -933,6 +938,52 @@
     return nav;
   }
 
+  function calloutStrip(buttons) {
+    const strip = document.createElement('div');
+    strip.className = 'smrb-callout-strip';
+    strip.setAttribute('role', 'group');
+    strip.setAttribute('aria-label', 'Possible callouts');
+    strip.append(...buttons);
+    let press = null;
+    let dragged = false;
+
+    strip.addEventListener('pointerdown', event => {
+      if (event.pointerType !== 'mouse' || event.button !== 0) return;
+      dragged = false;
+      if (strip.scrollWidth > strip.clientWidth) {
+        press = { id: event.pointerId, x: event.clientX, left: strip.scrollLeft };
+      }
+    });
+    strip.addEventListener('pointermove', event => {
+      if (event.pointerId !== press?.id || !event.buttons) return;
+      const distance = event.clientX - press.x;
+      if (!dragged && Math.abs(distance) < 5) return;
+      if (!dragged) {
+        dragged = true;
+        strip.setPointerCapture(event.pointerId);
+        strip.classList.add('smrb-dragging');
+      }
+      strip.scrollLeft = press.left - distance;
+    });
+    const endDrag = () => {
+      press = null;
+      strip.classList.remove('smrb-dragging');
+    };
+    strip.addEventListener('pointerup', endDrag);
+    strip.addEventListener('pointercancel', endDrag);
+    strip.addEventListener('lostpointercapture', endDrag);
+    strip.addEventListener('pointerleave', () => {
+      if (!dragged) endDrag();
+    });
+    strip.addEventListener('click', event => {
+      if (!dragged || event.detail === 0) return;
+      event.preventDefault();
+      event.stopPropagation();
+      dragged = false;
+    }, true);
+    return strip;
+  }
+
   function renderCalloutStatus() {
     const summary = [...document.querySelectorAll('section h3')]
       .find(heading => norm(heading.textContent) === 'callout summary' && !heading.closest(CFG.EXCLUDE))
@@ -944,7 +995,7 @@
     panel.dataset.smrbScreenshotStatus = '1';
     panel.className = 'smrb-callout-status';
     const title = document.createElement('h3');
-    title.textContent = 'STATUS (POSSIBLE CALLOUT) - ALL ARE JUST POSSIBLE';
+    title.textContent = 'POSSIBLE CALLOUTS';
     panel.append(title);
     const items = issues.filter(issue => !/\b(?:metadata|URLs?)\b/i.test(issue.label));
     if (!items.length) {
@@ -970,10 +1021,10 @@
       item.textContent = totals.get(section) > 1 ? `${section} ${number}` : section;
       item.title = [place, issue.label, issue.detail].filter(Boolean).join(' · ');
       item.setAttribute('aria-label', `${item.textContent}. ${item.title}`);
-      item.addEventListener('click', () => goTo(issue.id, () => {}));
+      item.addEventListener('click', () => goTo(issue.id, () => {}, issue.flash));
       return item;
     });
-    if (buttons.length) panel.append(browseItems(buttons, 'possible callouts'));
+    if (buttons.length) panel.append(calloutStrip(buttons));
     if (before) before.before(panel);
     else anchor.prepend(panel);
   }
@@ -1036,10 +1087,7 @@
   // ================= Page: /report_summaries =================
   function reportSummariesChecks() {
     // #attachments: nothing to do (it is in CFG.EXCLUDE)
-    if (on('formatting')) byId('report_highlights', 'Report highlights', el => bodiesOf(el).forEach(body => {
-      wrapFormatting(body);
-      if (!NO_MATCH_LINE.test(norm(body.textContent))) trailingLineCheck(body);
-    }));
+    if (on('formatting')) byId('report_highlights', 'Report highlights', el => bodiesOf(el).forEach(wrapFormatting));
     if (on('placeholders')) placeholderChecks();
     if (on('orangeText')) orangeTextChecks();
     if (on('mediaLinks')) mediaLinkChecks();                                                                          // unfilled {Placeholder} in a coloured span
@@ -1174,7 +1222,7 @@
       }
     }
   }
-  function goTo(id, done) {
+  function goTo(id, done, flash = true) {
     const find = () => elById.get(id) || document.querySelector(`[data-smrb-i="${id}"]`);
     const first = find();
     if (!first) { done({ ok: false, reason: 'missing' }); return; }
@@ -1184,8 +1232,10 @@
       const el = find() || first;
       if (!el.isConnected || !el.getClientRects().length) { done({ ok: false, reason: 'hidden' }); return; }
       el.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'smooth' });
-      el.classList.add('smrb-flash');
-      setTimeout(() => el.classList.remove('smrb-flash'), 2600);
+      if (flash) {
+        el.classList.add('smrb-flash');
+        setTimeout(() => el.classList.remove('smrb-flash'), 2600);
+      }
       done({ ok: true });
     }, 250);
   }

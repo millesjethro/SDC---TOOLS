@@ -2,6 +2,9 @@
 Versioning: 1.0.1 → 1.0.5, then 1.1.0 → 1.1.5, then 1.2.0 → 1.2.5 ...
 
 ## 1.7.0
+- Possible Callouts scrolls end to end by mouse drag, touch, or the scrollbar.
+- Google count mismatches appear as callouts without outlining the summary.
+- Excluded Report Highlights from the trailing blank-line check and added a Progressive Insurance exception for “Identified [word] Page:” labels.
 - Google link matching compares stand-alone link and uploaded image row counts. The Ignore Words tab excludes matching link labels.
 - Updated screenshot limits, summary capitalization and trailing blank-line checks from the rule reference.
 - BULK checks screenshot URLs on Networks only when Related Highlights on Timeline is enabled.
