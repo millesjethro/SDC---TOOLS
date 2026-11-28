@@ -511,8 +511,8 @@
     return items;
   };
   function socmedLinkChecks(root) {
-    const progressive = [...document.querySelectorAll('#clientSop > div')]
-      .some(field => norm(field.textContent).includes('progressive insurance'));
+    const progressive = [...document.querySelectorAll('#clientSop > div a[href]')]
+      .some(link => link.getAttribute('href').trim() && /\bprogressive insurance\b/.test(norm(link.textContent)));
     rangeChecks(root, (full, parts) => findIdentified(full, parts, progressive));
   }
 

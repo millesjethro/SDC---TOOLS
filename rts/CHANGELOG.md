@@ -2,6 +2,7 @@
 Versioning: 1.0.1 → 1.0.5, then 1.1.0 → 1.1.5, then 1.2.0 → 1.2.5 ...
 
 ## 1.7.0
+- The Progressive Insurance exception requires matching hyperlink text in Client SOP.
 - Possible Callouts scrolls end to end by mouse drag, touch, or the scrollbar.
 - Google count mismatches appear as callouts without outlining the summary.
 - Excluded Report Highlights from the trailing blank-line check and added a Progressive Insurance exception for “Identified [word] Page:” labels.
