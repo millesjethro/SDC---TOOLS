@@ -483,12 +483,11 @@
   }
 
   // A hyperlink may cover any of the first three words after "identified".
-  const findIdentified = (full, parts, progressive = false) => {
+  const findIdentified = (full, parts) => {
     const items = [];
     for (const match of full.matchAll(SOCMED_PHRASE)) {
       if (match[0].startsWith('I')) continue;
       const keywordEnd = match.index + 'identified'.length;
-      if (progressive && /^\s+[\p{L}\p{N}][\p{L}\p{N}’'_-]*\s+page\s*:/iu.test(full.slice(keywordEnd))) continue;
       const keywordParts = parts.filter(({ n, start }) => start < keywordEnd && start + n.nodeValue.length > match.index);
       if (keywordParts.length && keywordParts.every(({ n }) => {
         const weight = getComputedStyle(n.parentElement).fontWeight;
@@ -510,13 +509,7 @@
     }
     return items;
   };
-  function socmedLinkChecks(root) {
-    const client = document.querySelector(
-      '#webformSubheader > div > div:nth-of-type(1) > div:nth-of-type(1) > div > div:nth-of-type(2) > div:nth-of-type(2) > span:nth-of-type(1)'
-    );
-    const progressive = norm(client?.textContent) === 'progressive insurance';
-    rangeChecks(root, (full, parts) => findIdentified(full, parts, progressive));
-  }
+  const socmedLinkChecks = root => rangeChecks(root, findIdentified);
 
   // ================= Checks: "same [word] (...)": check for parentheses after up to three words =================
   // Only when "same" STARTS an item: at the start of the text or a sentence, after a comma, or after "and".
@@ -756,11 +749,17 @@
       for (const m of root.textContent.matchAll(new RegExp(RE.url.source, 'gi'))) { const k = textUrlKey(m); if (k) keys.add(k); }
     });
     if (!keys.size) return;
+    const client = document.querySelector(
+      '#webformSubheader > div > div:nth-of-type(1) > div:nth-of-type(1) > div > div:nth-of-type(2) > div:nth-of-type(2) > span:nth-of-type(1)'
+    );
+    const progressive = norm(client?.textContent) === 'progressive insurance';
     scanned('profile_summary').forEach(s => bodiesOf(s).forEach(b => {
       ctx = { where: 'Profile summary', row: null };
       b.querySelectorAll('a[href]').forEach(a => {
         const k = hrefKey(a);
-        if (k && keys.has(k)) paint(a, SEV.linkInSummary, 'Profile link is hyperlinked in the summary', (a.getAttribute('href') || '').slice(0, 80));
+        if (!k || !keys.has(k)) return;
+        const detail = progressive ? 'Progressive Insurance (Not Applicable)' : (a.getAttribute('href') || '').slice(0, 80);
+        paint(a, SEV.linkInSummary, 'Profile link is hyperlinked in the summary', detail);
       });
     }));
   }
