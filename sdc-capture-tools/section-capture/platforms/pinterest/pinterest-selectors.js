@@ -5,8 +5,8 @@
 // The business profile's main box. The capture starts at it and ends at the
 // third section inside it when the page has one, otherwise at the first.
 const PINTEREST_MAIN =
-  "#__PWS_ROOT__ > div:nth-of-type(1) > div > div:nth-of-type(3) > div > div" +
-  " > div:nth-of-type(2) > div:nth-of-type(2) > div";
+  "body > div#__PWS_ROOT__:nth-of-type(1) > div:nth-of-type(1) > div > div:nth-of-type(3) > div > div" +
+  " > div:nth-of-type(3) > div:nth-of-type(2) > div";
 const PINTEREST_END_1 = PINTEREST_MAIN + " > div:nth-of-type(3) > div > div > div > div > div:nth-of-type(1) > div > div";
 const PINTEREST_END_2 = PINTEREST_MAIN + " > div:nth-of-type(3) > div > div > div > div > div:nth-of-type(3)";
 
