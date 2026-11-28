@@ -511,8 +511,10 @@
     return items;
   };
   function socmedLinkChecks(root) {
-    const progressive = [...document.querySelectorAll('#clientSop > div a[href]')]
-      .some(link => link.getAttribute('href').trim() && /\bprogressive insurance\b/.test(norm(link.textContent)));
+    const client = document.querySelector(
+      '#webformSubheader > div > div:nth-of-type(1) > div:nth-of-type(1) > div > div:nth-of-type(2) > div:nth-of-type(2) > span:nth-of-type(1)'
+    );
+    const progressive = norm(client?.textContent) === 'progressive insurance';
     rangeChecks(root, (full, parts) => findIdentified(full, parts, progressive));
   }
 
