@@ -65,3 +65,50 @@ h2 {
 .sw input:checked + i::before { transform: translateX(16px); }
 .sw input:focus-visible + i { outline: 2px solid #146b99; outline-offset: 2px; }
 .sw input:disabled + i { opacity: .55; }
+
+.popup-tabs {
+  display: flex;
+  gap: 14px;
+  margin-bottom: 13px;
+  border-bottom: 1px solid #d8e1db;
+}
+.popup-tabs button {
+  padding: 0 2px 6px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: #43564b;
+  font: inherit;
+  cursor: pointer;
+}
+.popup-tabs [aria-selected="true"] {
+  border-bottom-color: #277655;
+  color: #19241f;
+  font-weight: 700;
+}
+#google-ignore-form { display: grid; gap: 6px; }
+#google-ignore-form p { margin: 0; }
+#google-ignore-status:empty { display: none; }
+#google-ignore-words {
+  resize: vertical;
+  width: 100%;
+  padding: 7px;
+  border: 1px solid #a7b8af;
+  border-radius: 6px;
+  color: inherit;
+  font: inherit;
+}
+#google-ignore-save {
+  justify-self: start;
+  padding: 5px 12px;
+  border: 1px solid #277655;
+  border-radius: 6px;
+  background: #277655;
+  color: #fff;
+  font: inherit;
+  cursor: pointer;
+}
+.popup-tabs button:focus-visible, #google-ignore-form :focus-visible {
+  outline: 2px solid #146b99;
+  outline-offset: 2px;
+}

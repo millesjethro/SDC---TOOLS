@@ -5,7 +5,6 @@
     FILE_OK: /\.(jpe?g|png)$/i,
     EXCLUDE: '.feedback-form, #attachments',   // regions that are never scanned (the "mistake" form; attachments: nothing to do)
     IGNORE_WWW: false,              // true => "www.site.com" is treated as having NO subdomain
-    IMAGE_HINT_SIMILARITY: 0.6,     // how alike an uploaded image name must be to be offered as "closest image"
   };
   // Severity per rule: red = high, orange = mid, yellow = low
   const SEV = {
@@ -14,7 +13,7 @@
     formatting: 'yellow',
     relatives: 'orange', googleName: 'orange', placeholder: 'orange',
     duplicateUrl: 'orange', linkInSummary: 'orange',
-    noImage: 'orange', possibleImage: 'red', screenshotRows: 'red', otherFile: 'red', socmedLink: 'orange', missingSame: 'red', forbiddenUrl: 'red', orangeText: 'yellow', mediaDup: 'orange', dupImageName: 'yellow', urlName: 'orange', businessPage: 'red',
+    noImage: 'orange', possibleImage: 'red', screenshotRows: 'red', otherFile: 'red', socmedLink: 'orange', missingSame: 'red', forbiddenUrl: 'red', orangeText: 'yellow', mediaDup: 'orange', dupImageName: 'yellow', businessPage: 'red',
   };
   // Modes live in their own files (modes/<name>.js, loaded before this file); each one registers itself in RTS_MODES.
   const MODES = globalThis.RTS_MODES || {};
@@ -30,7 +29,7 @@
   const FILE_EXT = new Set(['txt','jpg','jpeg','png','gif','webp','pdf','html','htm','css','js','json','csv','doc','docx','xls','xlsx','zip','mp4','svg']);
   const SLD = new Set(['co','com','org','net','gov','edu','ac','or','ne','go']);
 
-  let settings = { enabled: true, mode: 'bulk_rh', googleMatch: true, relatedHighlightsOnTimeline: false, sameIgnoredWords: [] };
+  let settings = { enabled: true, mode: 'bulk_rh', googleMatch: true, googleIgnoredWords: [], relatedHighlightsOnTimeline: false, sameIgnoredWords: [] };
   // Report Highlights keeps its timeline checks in every mode.
   const modeCfg = () => (pageType() === 'report_summaries' || settings.relatedHighlightsOnTimeline
     ? MODES.bulk_rh : MODES[settings.mode]) || MODES.bulk_rh || FALLBACK_MODE;
@@ -487,6 +486,7 @@
   const findIdentified = (full, parts) => {
     const items = [];
     for (const match of full.matchAll(SOCMED_PHRASE)) {
+      if (match[0].startsWith('I')) continue;
       const keywordEnd = match.index + 'identified'.length;
       const keywordParts = parts.filter(({ n, start }) => start < keywordEnd && start + n.nodeValue.length > match.index);
       if (keywordParts.length && keywordParts.every(({ n }) => {
@@ -567,29 +567,7 @@
     });
   }
 
-  // ================= Checks: each source link in the summary needs an image named after it =================
-  // Summary layout (one paragraph or line per row):
-  //   Match found by first and last name ...            <- prose line
-  //   [Truepeoplesearch](url)                           <- first stand-alone link after a prose line: the main source
-  //   [Newbizbot](url)                                  <- further stand-alone links in the group: the other results
-  //   Match found ... as seen on [Truepeoplesearch](url) <- links inside prose: not checked
-  // The word must be the exact name of an uploaded image (case-insensitive, extension ignored).
-  // The other results of a group are also OK when a "Google" image (Google Results, where everything is put) is uploaded.
-  const stripExt = t => t.replace(/\.(jpe?g|png|gif|webp)$/i, '');
-  const IMG_NAME = /\.(jpe?g|png|gif|webp)$/i;
-  function similarity(a, b) {
-    a = a.replace(/[^a-z0-9]/g, ''); b = b.replace(/[^a-z0-9]/g, '');
-    if (!a || !b) return 0;
-    if (a.includes(b) || b.includes(a)) return Math.max(0.8, Math.min(a.length, b.length) / Math.max(a.length, b.length));
-    let prev = Array.from({ length: b.length + 1 }, (_, j) => j);
-    for (let i = 1; i <= a.length; i++) {
-      const cur = [i];
-      for (let j = 1; j <= b.length; j++) cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
-      prev = cur;
-    }
-    return 1 - prev[b.length] / Math.max(a.length, b.length);
-  }
-
+  // ================= Google: compare stand-alone link lines with uploaded image rows =================
   // split a text block into visual lines (new line at <br> and at block-level elements)
   function summaryLines(body) {
     const BLOCK = /^(P|DIV|LI|UL|OL|H[1-6]|TR|TABLE|BLOCKQUOTE)$/;
@@ -611,83 +589,41 @@
     flush();
     return lines;
   }
-  // every stand-alone link of every group; primary = first link of the group
-  function groupLinks(body) {
-    const out = [];
-    let groupOpen = false;
-    summaryLines(body).forEach(line => {
-      const text = line.text.replace(/[\s\u00A0]+/g, ' ').trim();
-      if (!text && !line.links.length) return;                       // blank line: neutral
-      let rest = text;
-      line.links.forEach(a => { rest = rest.replace(a.textContent.replace(/[\s\u00A0]+/g, ' ').trim(), ''); });
-      const standalone = line.links.length > 0 && !/[\p{L}\p{N}]/u.test(rest);
-      if (!standalone) { groupOpen = false; return; }                // prose line starts a new group
-      line.links.forEach((a, i) => out.push({ a, primary: !groupOpen && i === 0 }));
-      groupOpen = true;
-    });
-    return out;
+  function sourceImageChecks(summaries) {
+    if (!summaries.length || modeCfg().reportType === 'nonbulk') return;
+    const ignored = new Set(settings.googleIgnoredWords.map(norm));
+    let links = 0;
+    for (const summary of summaries) {
+      for (const body of bodiesOf(summary)) {
+        for (const { text, links: lineLinks } of summaryLines(body)) {
+          if (lineLinks.length !== 1) continue;
+          const link = lineLinks[0];
+          const label = norm(link.textContent);
+          if (label && norm(text) === label && link.getAttribute('href').trim() && !ignored.has(label)) links++;
+        }
+      }
+    }
+
+    const images = new Set(screenshotRows().filter(row =>
+      row.querySelector('[data-bs-target="#screenshotViewer"] img')
+      || [...row.querySelectorAll('[data-bs-target="#screenshotViewer"], a[href*="/active_storage/"]')]
+        .some(file => /\.(?:jpe?g|png|gif|webp|avif|bmp)$/i.test(file.textContent.trim()))
+    )).size;
+    if (links === images) return;
+    ctx = { where: 'Profile summary', row: null };
+    paint(bodiesOf(summaries[0])[0], SEV.googleName, 'Miss match numbers of screenshots',
+      `${links} stand-alone link${links === 1 ? '' : 's'} · ${images} uploaded image row${images === 1 ? '' : 's'}`);
+  }
+  function trailingLineCheck(body) {
+    if (!body.textContent.trim()) return;
+    const last = body.lastElementChild;
+    const trailingEmptyBlock = last?.matches('p,div') && !last.textContent.trim()
+      && !last.querySelector('img,video,iframe');
+    if (trailingEmptyBlock || /\n[\t ]*\n[\t ]*$/.test(body.innerText || '')) {
+      paint(trailingEmptyBlock ? last : body, SEV.formatting, 'Extra blank line at the end');
+    }
   }
 
-  // names of every uploaded image on the page: file names in the screenshots table / img src, alt and title
-  function uploadedImageNames() {
-    const names = new Set();
-    const add = t => { const n = norm(t); if (n) { names.add(n); names.add(stripExt(n)); } };
-    document.querySelectorAll('img').forEach(img => {
-      if (img.closest(CFG.EXCLUDE)) return;
-      let file = '';
-      try { file = decodeURIComponent((img.getAttribute('src') || '').split(/[?#]/)[0].split('/').pop()); } catch { /* ignore */ }
-      if (IMG_NAME.test(file)) add(file);
-      add(img.getAttribute('alt')); add(img.getAttribute('title'));
-    });
-    document.querySelectorAll('[data-bs-target="#screenshotViewer"] span').forEach(sp => { if (!sp.closest(CFG.EXCLUDE)) add(sp.textContent); });
-    return names;
-  }
-
-  // ---- the hyperlink must be "named after" its URL: domain, subdomain, or subdomain + domain ----
-  //   [Truepeoplesearch](https://www.truepeoplesearch.com/..)   domain            -> OK
-  //   [Lifestyle](https://lifestyle.example.com/..)             subdomain         -> OK
-  //   [Lifestyle Example](https://lifestyle.example.com/..)     subdomain+domain  -> OK
-  const alnum = t => (t || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-  function hostParts(href) {
-    let u; try { u = new URL(href, location.href); } catch { return null; }
-    if (!/^https?:$/.test(u.protocol)) return null;
-    const labels = u.hostname.toLowerCase().replace(/^www\./, '').split('.');
-    if (labels.length < 2) return null;
-    const tldLen = labels.length >= 3 && labels[labels.length - 1].length === 2 && SLD.has(labels[labels.length - 2]) ? 2 : 1;
-    const domain = labels[labels.length - tldLen - 1];
-    return { domain, sub: labels.slice(0, labels.length - tldLen - 1), tld: labels.slice(-tldLen).join('.'), host: labels.join('.') };
-  }
-  function urlNameCheck(a) {
-    const shown = a.textContent.replace(/\s*\(\s*\d+\s*\)\s*$/, '');          // "Sunbiz (2)", "Sunbiz (3)" ... (n): the (n) is ignored
-    const name = alnum(shown);
-    const h = hostParts((a.getAttribute('href') || '').trim());
-    if (!name || !h) return;
-    const sub = h.sub.join('');
-    const ok = new Set([h.domain, sub, ...h.sub, sub + h.domain, h.domain + h.tld.replace(/\./g, ''), alnum(h.host)].filter(Boolean));
-    if (ok.has(name)) return;
-    const expect = [h.domain, sub && `${sub}`, sub && `${h.sub.join(' ')} ${h.domain}`].filter(Boolean).join('  /  ');
-    paint(a, SEV.urlName, 'Link text does not match its URL', `"${shown.trim()}" → ${h.host} · should be named: ${expect}`);
-  }
-
-  function sourceImageChecks() {
-    const summaries = scanned('profile_summary');
-    if (!summaries.length) return;
-    const names = modeCfg().reportType === 'nonbulk' ? new Set() : uploadedImageNames();
-    const googleResults = names.has('google');                       // one "Google" image holds all the results
-    summaries.forEach(s => bodiesOf(s).forEach(b => groupLinks(b).forEach(({ a, primary }) => {
-      const word = norm(a.textContent);
-      ctx = { where: 'Profile summary', row: null };
-      if (word) urlNameCheck(a);                                     // right URL? named after its domain / subdomain / both
-      if (!word || modeCfg().reportType === 'nonbulk' || names.has(word)) return;
-      if (!primary && googleResults) return;                         // listed on the Google Results image
-      let closest = '', best = 0;
-      names.forEach(n => { if (n.length < 3) return; const sc = similarity(n, word); if (sc > best) { best = sc; closest = n; } });
-      ctx = { where: 'Profile summary', row: null };
-      const shown = `"${a.textContent.trim()}"` + (primary ? '' : ' (result)');
-      const hint = best >= CFG.IMAGE_HINT_SIMILARITY ? ` · closest image: "${closest}"` : '';
-      paint(a, SEV.googleName, 'No named image was uploaded yet.', shown + hint + (primary ? '' : ' · no "Google" image either'));
-    })));
-  }
   // ================= Checks: profile / summary / highlights =================
   // ================= Checks: unfilled {Placeholders} inside a coloured span =================
   // e.g. <span style="color: rgb(224, 62, 45);">{Identifiers}<span style="color: rgb(0, 0, 0);">.</span></span>
@@ -855,7 +791,7 @@
       const field = card.querySelector(':scope > div:nth-of-type(2)');
       const uploaded = field && hasImage(field);
       if (state === 'match' && !uploaded) {
-        paint(noImageTarget(field || card), SEV.noImage, 'No image uploaded', 'Profile image');
+        paint(noImageTarget(field || card), SEV.noImage, 'No image uploaded', 'Ignore if there were no profile picture found');
       } else if (state === 'possible' && uploaded) {
         paint(field, SEV.possibleImage, 'An image is uploaded on a possible match');
       }
@@ -1048,14 +984,15 @@
     if (google && state === 'none') return null;
     const selectedType = MODES[settings.mode]?.reportType;
     if (settings.relatedHighlightsOnTimeline && (selectedType === 'std' || selectedType === 'nonbulk')) {
-      return { min: 0, max: google && state === 'possible' ? 1 : Infinity, details: true };
+      return state === 'none' ? { min: 0, max: 0, details: true }
+        : { min: google && (state === 'match' || state === 'possible') ? 1 : 0, max: Infinity, details: true };
     }
     if (type === 'nonbulk') return { min: 0, max: 0, details: false };
-    if (type === 'std' && !google && publicMedia) return null;
+    if (type === 'std' && !google && publicMedia && state !== 'match' && state !== 'none') return null;
     if (state === 'none') return { min: 0, max: 0, details: !urlsForbidden() };
     return {
-      min: state === 'match' || (type === 'bulk' && publicMedia) ? 1 : 0,
-      max: google ? (state === 'possible' ? 1 : Infinity) : (type === 'std' ? 1 : Infinity),
+      min: state === 'match' || (state === 'possible' && (type === 'std' || google)) || (type === 'bulk' && publicMedia) ? 1 : 0,
+      max: !google && type === 'std' ? 1 : Infinity,
       details: true,
     };
   }
@@ -1099,7 +1036,10 @@
   // ================= Page: /report_summaries =================
   function reportSummariesChecks() {
     // #attachments: nothing to do (it is in CFG.EXCLUDE)
-    if (on('formatting')) byId('report_highlights', 'Report highlights', el => bodiesOf(el).forEach(wrapFormatting));   // regular formatting only
+    if (on('formatting')) byId('report_highlights', 'Report highlights', el => bodiesOf(el).forEach(body => {
+      wrapFormatting(body);
+      if (!NO_MATCH_LINE.test(norm(body.textContent))) trailingLineCheck(body);
+    }));
     if (on('placeholders')) placeholderChecks();
     if (on('orangeText')) orangeTextChecks();
     if (on('mediaLinks')) mediaLinkChecks();                                                                          // unfilled {Placeholder} in a coloured span
@@ -1127,22 +1067,26 @@
     const skippedSummaries = new Set();
     summaries.forEach(el => {
       ctx = { where: 'Profile summary', row: null };
-      const summary = norm(textOf(el).replace(/[\u200B-\u200D\uFEFF]/g, ''));
+      const rawSummary = textOf(el).replace(/[\u200B-\u200D\uFEFF]/g, '').trim();
+      const summary = norm(rawSummary);
       if (state === 'none' && NO_MATCH_SEARCH_QUERY.test(summary)) {
         skippedSummaries.add(el);
         return;
       }
       const noMatch = NO_MATCH_LINE.test(summary);
       const expected = {
-        match: [/^(?:identified|match)\b/, 'Profile summary must start with “Identified” or “Match”'],
+        match: [/^(?:Identified|Match)\b/, 'Profile summary must start with “Identified” or “Match”'],
         possible: [/^possible\b/, 'Profile summary must start with “Possible”'],
         none: [NO_MATCH_LINE, 'Profile summary must say “No match found.”'],
       }[state];
-      if (expected && on('profileSummary') && !expected[0].test(summary)) {
+      if (expected && on('profileSummary') && !expected[0].test(state === 'match' ? rawSummary : summary)) {
         paint(bodiesOf(el)[0], SEV.noMatchSummary, expected[1]);
       }
       if (noMatch) return;
-      if (on('formatting')) bodiesOf(el).forEach(wrapFormatting);   // anything else: the usual checks
+      if (on('formatting')) bodiesOf(el).forEach(body => {
+        wrapFormatting(body);
+        if (state !== 'none') trailingLineCheck(body);
+      });
       if (on('socmedLinks')) bodiesOf(el).forEach(socmedLinkChecks);
       if (on('sameParen')) bodiesOf(el).forEach(sameParenChecks);
     });
@@ -1150,9 +1094,9 @@
     if (on('placeholders')) placeholderChecks(skippedSummaries);
     if (on('orangeText')) orangeTextChecks(skippedSummaries);
     if (on('mediaLinks')) mediaLinkChecks(skippedSummaries);
-    // image name <-> hyperlinked text: only for the Google network page, and only when switched on in the popup
+    // Count matching runs only on Google Networks when enabled in the popup.
     if (on('businessPage')) businessPageChecks();                                                                           // header (BA) -> "Identified Business Page"
-    if (google && state !== 'none' && on('googleImage') && settings.googleMatch) sourceImageChecks();
+    if (google && state !== 'none' && on('googleImage') && settings.googleMatch) sourceImageChecks(summaries);
 
     // #screenshots
     if (!policy) return;
@@ -1247,18 +1191,20 @@
   }
 
   // ================= Wiring =================
-  chrome.storage.sync.get({ enabled: true, mode: 'bulk_rh', googleMatch: true, relatedHighlightsOnTimeline: false, sameIgnoredWords: [] }, v => {
+  chrome.storage.sync.get({ enabled: true, mode: 'bulk_rh', googleMatch: true, googleIgnoredWords: [], relatedHighlightsOnTimeline: false, sameIgnoredWords: [] }, v => {
     settings.enabled = v.enabled;
     settings.relatedHighlightsOnTimeline = v.relatedHighlightsOnTimeline;
     settings.sameIgnoredWords = v.sameIgnoredWords;
     settings.mode = v.mode;
     settings.googleMatch = v.googleMatch;
+    settings.googleIgnoredWords = v.googleIgnoredWords;
     run();
   });
   chrome.storage.onChanged.addListener((ch, area) => {
     if (area !== 'sync') return;
     if (ch.enabled) settings.enabled = ch.enabled.newValue ?? true;
     if (ch.mode) settings.mode = ch.mode.newValue;
+    if (ch.googleIgnoredWords) settings.googleIgnoredWords = ch.googleIgnoredWords.newValue ?? [];
     if (ch.googleMatch) settings.googleMatch = ch.googleMatch.newValue;
     if (ch.relatedHighlightsOnTimeline) settings.relatedHighlightsOnTimeline = ch.relatedHighlightsOnTimeline.newValue ?? false;
     if (ch.sameIgnoredWords) settings.sameIgnoredWords = ch.sameIgnoredWords.newValue ?? [];

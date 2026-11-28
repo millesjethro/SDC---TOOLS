@@ -7,11 +7,27 @@
     <label class="sw"><input type="checkbox" id="enabled" aria-label="Enable SDC - RTS" disabled><i></i></label>
   </header>
   <main>
+    <div class="popup-tabs" role="tablist" aria-label="RTS settings">
+      <button type="button" id="report-tab" role="tab" aria-selected="true" aria-controls="report-panel">Report</button>
+      <button type="button" id="ignore-tab" role="tab" aria-selected="false" aria-controls="ignore-panel" tabindex="-1">Ignore Words</button>
+    </div>
+    <section id="report-panel" role="tabpanel" aria-labelledby="report-tab">
     <h2 id="mode-heading">Report Type</h2>
     <div id="modes" class="modes" role="radiogroup" aria-labelledby="mode-heading"></div>
     <label class="setting">Google link matching <span class="sw"><input type="checkbox" id="googleMatch" disabled><i></i></span></label>
     <label class="setting">Related Highlights on Timeline <span class="sw"><input type="checkbox" id="relatedHighlightsOnTimeline" disabled><i></i></span></label>
     <p id="mode-status" role="status"></p>
+    </section>
+    <section id="ignore-panel" role="tabpanel" aria-labelledby="ignore-tab" hidden>
+      <h2>Google Link Matching</h2>
+      <form id="google-ignore-form">
+        <label for="google-ignore-words">Ignore Words</label>
+        <textarea id="google-ignore-words" rows="5" maxlength="4000" aria-describedby="google-ignore-help" disabled></textarea>
+        <p id="google-ignore-help">One link label per line.</p>
+        <button type="submit" id="google-ignore-save" disabled>Save</button>
+        <p id="google-ignore-status" role="status"></p>
+      </form>
+    </section>
   </main>
   <script src="modes/bulk_no_rh.js"></script>
   <script src="modes/bulk_rh.js"></script>

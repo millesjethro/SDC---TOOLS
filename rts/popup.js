@@ -67,3 +67,53 @@ chrome.storage.sync.get({ mode: 'bulk_rh', ...toggleDefaults }, values => {
     list.append(label);
   }
 });
+
+const tabs = [...document.querySelectorAll('.popup-tabs [role="tab"]')];
+function activateTab(selected) {
+  for (const tab of tabs) {
+    const active = tab === selected;
+    tab.setAttribute('aria-selected', String(active));
+    tab.tabIndex = active ? 0 : -1;
+    document.getElementById(tab.getAttribute('aria-controls')).hidden = !active;
+  }
+  selected.focus();
+}
+tabs.forEach((tab, index) => {
+  tab.addEventListener('click', () => activateTab(tab));
+  tab.addEventListener('keydown', event => {
+    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+    event.preventDefault();
+    const next = event.key === 'Home' ? tabs[0] : event.key === 'End' ? tabs.at(-1) : tabs[1 - index];
+    activateTab(next);
+  });
+});
+
+const ignoreWords = document.getElementById('google-ignore-words');
+const ignoreSave = document.getElementById('google-ignore-save');
+const ignoreStatus = document.getElementById('google-ignore-status');
+chrome.storage.sync.get({ googleIgnoredWords: [] }, values => {
+  if (chrome.runtime.lastError) {
+    ignoreStatus.textContent = 'Couldn’t load ignored words.';
+    return;
+  }
+  ignoreWords.value = values.googleIgnoredWords.join('\n');
+  ignoreWords.disabled = ignoreSave.disabled = false;
+});
+
+document.getElementById('google-ignore-form').addEventListener('submit', async event => {
+  event.preventDefault();
+  if (ignoreSave.disabled) return;
+  const labels = [...new Set(ignoreWords.value.split(/\r?\n/)
+    .map(line => line.trim().replace(/\s+/g, ' ').toLowerCase()).filter(Boolean))];
+  ignoreSave.disabled = true;
+  ignoreWords.disabled = true;
+  try {
+    await chrome.storage.sync.set({ googleIgnoredWords: labels });
+    ignoreWords.value = labels.join('\n');
+    ignoreStatus.textContent = 'Saved.';
+  } catch {
+    ignoreStatus.textContent = 'Couldn’t save ignored words.';
+  } finally {
+    ignoreWords.disabled = ignoreSave.disabled = false;
+  }
+});
